@@ -58,7 +58,15 @@ body{
 .tstat .lab{font-size:8.5px;color:var(--txt-2);letter-spacing:.12em;text-transform:uppercase}
 .tstat .val{font-size:12px;font-weight:600;font-family:var(--mono)}
 .regime-pill{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.1em;border:1px solid var(--line-2)}
-#clock{font-family:var(--mono);font-size:12px;color:var(--txt-1)}
+.clocks{display:flex;gap:10px;align-items:center;padding-left:12px;margin-left:4px;border-left:1px solid var(--line)}
+.czone{text-align:center;line-height:1.12}
+.czone .city{font-size:8px;letter-spacing:.08em;color:var(--txt-2);display:flex;align-items:center;gap:3px;justify-content:center}
+.czone .ct{font-family:var(--mono);font-size:11px;color:var(--txt-1)}
+.mkt-dot{width:6px;height:6px;border-radius:50%;flex:none}
+.mkt-open{background:var(--up);box-shadow:0 0 6px var(--up)}
+.mkt-closed{background:var(--txt-2);opacity:.55}
+.tape-item.idx .sym{color:var(--accent-2);font-weight:700}
+.tape-item.idx{padding-right:6px;margin-right:2px;border-right:1px solid var(--line)}
 
 /* ---------- Sidebar ---------- */
 #sidebar{grid-area:left;display:flex;flex-direction:column;background:var(--bg-1);border-right:1px solid var(--line)}
@@ -192,8 +200,8 @@ table.qt tr:hover td{background:var(--bg-2);cursor:pointer}
       <div class="tstat"><div class="lab">Breadth</div><div class="val" id="breadth">—</div></div>
       <div class="regime-pill" id="regimePill">—</div>
       <div class="tstat"><div class="lab">Latencia</div><div class="val up" id="latency">0.4ms</div></div>
-      <div id="clock">--:--:--</div>
     </div>
+    <div class="clocks" id="clocks"></div>
   </div>
 
   <!-- SIDEBAR -->
@@ -268,6 +276,13 @@ const heatColor=s=>{const t=M.clip(s/100,0,1);const r=Math.round(234-(234-22)*t)
    ============================================================ */
 const SECTORS=["Tech","AI","Semis","Software","Fintech","Healthcare","Biotech","Energy","Financials","Consumer","Industrials","Materials","Utilities","Comms","RealEstate"];
 const REGIONS=["US","US","US","Europe","US","US","Asia"];
+/* Deterministic market cap (B$) — megacaps hard-coded, rest synthetic & sticky */
+const MEGACAPS={AAPL:3000,MSFT:3100,NVDA:2950,GOOGL:2100,AMZN:1950,META:1350,AVGO:780,TSLA:820,TSM:900,LLY:760,JPM:620,V:560,UNH:470,MA:430,ORCL:380,ASML:340,NFLX:300,AMD:255,ADBE:235,CRM:255,XOM:480,CVX:300,JNJ:380,PFE:160,MRNA:40,GS:130,MS:150,BAC:300,NESN:300,NOVO:520,AZN:240,SHEL:210,TTE:160,SAP:230,SIE:160,MC:380,DIS:200,NEE:150,LIN:220,CAT:170,BA:120,GE:190,HON:140,DUK:80,FCX:60,PLD:110,AMT:90,PYPL:75,SQ:45,VRTX:120,REGN:95,GILD:90,COP:140,SLB:65,COST:340};
+function assignCap(ticker,sector){
+  if(MEGACAPS[ticker])return MEGACAPS[ticker];
+  const h=hashStr(ticker+"cap");const big=h%9===0;
+  return Math.round(1.5+(h%1000)/1000*(big?420:90));
+}
 function buildUniverse(){
   // Real-ish seed names for flavor, then synthetic fill to 500+
   const seeds=[
@@ -286,7 +301,7 @@ function buildUniverse(){
     ["SAP","SAP","Software"],["SIE","Siemens","Industrials"],["MC","LVMH","Consumer"],["NESN","Nestlé","Consumer"],
     ["AZN","AstraZeneca","Healthcare"],["NOVO","Novo Nordisk","Healthcare"],["SHEL","Shell","Energy"],["TTE","TotalEnergies","Energy"]
   ];
-  const list=seeds.map(([t,n,s])=>({ticker:t,name:n,sector:s,region:s==="Energy"&&Math.random()<.3?"Europe":"US"}));
+  const list=seeds.map(([t,n,s])=>({ticker:t,name:n,sector:s,region:s==="Energy"&&(hashStr(t+"reg")%10)<3?"Europe":"US",marketCap:assignCap(t,s)}));
   const prefixes=["AX","ZN","QV","RK","TL","BN","CR","DM","FN","GX","HV","JL","KP","LN","MX","NR","PV","RS","TC","VL","WX","YN","ZB","QC","BD","EF"];
   let i=0;
   while(list.length<520){
@@ -295,7 +310,7 @@ function buildUniverse(){
     if(!list.find(a=>a.ticker===tk)){
       const sec=SECTORS[hashStr(tk)%SECTORS.length];
       const reg=REGIONS[hashStr(tk+"r")%REGIONS.length];
-      list.push({ticker:tk,name:tk+" Holdings",sector:sec,region:reg});
+      list.push({ticker:tk,name:tk+" Holdings",sector:sec,region:reg,marketCap:assignCap(tk,sec)});
     }
     i++;
   }
@@ -313,6 +328,7 @@ const GROUPS={
   "TECH":a=>["Tech","Software","Semis"].includes(a.sector),
   "AI":a=>["AI","Semis","Software"].includes(a.sector),
   "BIOTECH":a=>a.sector==="Biotech",
+  "HEALTHCARE":a=>["Healthcare","Biotech"].includes(a.sector),
   "ENERGY":a=>a.sector==="Energy",
   "SMALL CAP":a=>hashStr(a.ticker+"sc")%4===0,
   "FINTECH":a=>a.sector==="Fintech",
@@ -377,6 +393,24 @@ function benchmark(){
   }
   _bench={price:idx,ret:M.logret(idx)};
   return _bench;
+}
+
+/* Global reference indices (equal-weight synthetic) for the macro tape */
+const INDEX_DEFS=[
+  {code:"S&P 500",group:"S&P500",n:60},
+  {code:"NASDAQ",group:"NASDAQ",n:60},
+  {code:"RUSSELL",group:"RUSSELL",n:60},
+  {code:"EURO STOXX",group:"EUROPE",n:30},
+  {code:"NIKKEI",group:"ASIA",n:20}
+];
+const _indexCache={};
+function indexSeries(group,n){
+  if(_indexCache[group])return _indexCache[group];
+  const syms=UNIVERSE.filter(GROUPS[group]).slice(0,n).map(a=>a.ticker);
+  if(syms.length<2){_indexCache[group]={price:[1000,1000]};return _indexCache[group];}
+  const series=syms.map(genSeries);const idx=[];
+  for(let t=0;t<NDAYS;t++){let s=0;for(const sr of series)s+=sr.price[t]/sr.price[0];idx.push(s/series.length*1000);}
+  _indexCache[group]={price:idx};return _indexCache[group];
 }
 
 /* ============================================================
@@ -596,9 +630,15 @@ function selectAsset(t){STATE.selected=t;renderAssetList();renderCenter();log("S
    RENDER — Topbar
    ============================================================ */
 function renderTape(){
+  // Mercado Actual: ticks de los principales índices de referencia globales
+  const idxItems=INDEX_DEFS.map(d=>{
+    const s=indexSeries(d.group,d.n).price;const lvl=M.last(s);const chg=Math.log(lvl/s[s.length-2]);
+    return `<div class="tape-item idx"><span class="sym">${d.code}</span><span class="mono">${fmt(lvl,0)}</span><span class="mono ${chg>=0?'up':'down'}">${pct(chg,2)}</span></div>`;
+  });
   const syms=["AAPL","NVDA","MSFT","TSLA","META","AMZN","GOOGL","JPM","XOM","AMD","AVGO","NFLX"];
-  $("#tape").innerHTML=syms.map(s=>{const A=analyze(s);const c=A.models.momentum.detail.r1;
-    return `<div class="tape-item"><span class="sym">${s}</span><span class="mono">${fmt(M.last(A.S.price))}</span><span class="mono ${c>=0?'up':'down'}">${pct(c,1)}</span></div>`;}).join("");
+  const stocks=syms.map(s=>{const p=genSeries(s).price;const c=Math.log(M.last(p)/p[p.length-2]);
+    return `<div class="tape-item"><span class="sym">${s}</span><span class="mono">${fmt(M.last(p))}</span><span class="mono ${c>=0?'up':'down'}">${pct(c,2)}</span></div>`;});
+  $("#tape").innerHTML=idxItems.join("")+stocks.join("");
 }
 function renderTop(){
   // global vol = mean annVol of bench constituents; breadth = % score>50
@@ -614,10 +654,27 @@ function renderTop(){
   const rc={BULL:"var(--up)",BEAR:"var(--down)",SIDEWAYS:"var(--warn)",PANIC:"var(--down)"}[reg];
   const pill=$("#regimePill");pill.textContent="RÉGIMEN: "+reg;pill.style.color=rc;pill.style.borderColor=rc;pill.style.background=rc+"14";
 }
+/* Reloj multizona — centros de liquidación globales con estado de sesión */
+const MARKETS=[
+  {code:"NY",city:"Nueva York",tz:"America/New_York",open:[9,30],close:[16,0]},
+  {code:"LON",city:"Londres",tz:"Europe/London",open:[8,0],close:[16,30]},
+  {code:"FRA",city:"Fráncfort",tz:"Europe/Berlin",open:[9,0],close:[17,30]},
+  {code:"TYO",city:"Tokio",tz:"Asia/Tokyo",open:[9,0],close:[15,0]}
+];
+function marketOpen(m){
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:m.tz,weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+  const wd=parts.find(p=>p.type==="weekday").value;
+  if(wd==="Sat"||wd==="Sun")return false;
+  let hh=+parts.find(p=>p.type==="hour").value;const mm=+parts.find(p=>p.type==="minute").value;
+  if(hh===24)hh=0;
+  const t=hh*60+mm;return t>=m.open[0]*60+m.open[1]&&t<m.close[0]*60+m.close[1];
+}
 function tickClock(){
-  const d=new Date();
-  const ny=d.toLocaleTimeString("en-US",{timeZone:"America/New_York",hour12:false});
-  $("#clock").innerHTML=`NY ${ny}`;
+  $("#clocks").innerHTML=MARKETS.map(m=>{
+    const t=new Date().toLocaleTimeString("en-US",{timeZone:m.tz,hour12:false,hour:"2-digit",minute:"2-digit"});
+    const open=marketOpen(m);
+    return `<div class="czone" title="${m.city} · ${open?'ABIERTO':'CERRADO'}"><div class="city"><span class="mkt-dot ${open?'mkt-open':'mkt-closed'}"></span>${m.code}</div><div class="ct">${t}</div></div>`;
+  }).join("");
   $("#latency").textContent=(0.3+Math.random()*0.4).toFixed(2)+"ms";
 }
 
@@ -739,7 +796,7 @@ function renderRiskTab(){
   const A=analyze(STATE.selected);const ra=A.models.riskadj.detail;const t=A.models.tail.detail;
   const p=A.S.price;const ret=M.logret(p);
   const mdd=maxDD(p);
-  const mc=monteCarlo(p,90,500);
+  const mc=monteCarlo(p,90,1000);
   $("#centerBody").innerHTML=`
   <div class="kpi-grid" style="margin-bottom:12px">
     <div class="kpi"><div class="l">Sharpe</div><div class="v ${ra.sharpe>0?'up':'down'}">${fmt(ra.sharpe)}</div></div>
@@ -757,8 +814,8 @@ function renderRiskTab(){
   </div>
   <div class="grid2">
     <div class="card"><h3>Curva de Drawdown</h3>${drawdownChart(p,260,110)}</div>
-    <div class="card"><h3>Monte Carlo — 500 caminos · 90d (GBM)</h3>${mcChart(mc,260,110)}
-      <div class="legend"><span><span class="dot" style="background:var(--up)"></span>P95</span><span><span class="dot" style="background:var(--txt-1)"></span>Mediana</span><span><span class="dot" style="background:var(--down)"></span>P5</span></div>
+    <div class="card"><h3>Monte Carlo — 1000 caminos · Conos 30/60/90d (GBM)</h3>${mcChart(mc,260,110)}
+      ${mcConeTable(mc)}
     </div>
   </div>
   <div class="card" style="margin-top:12px"><h3>Stress Test — Escenarios Históricos (paramétrico)</h3>
@@ -812,21 +869,35 @@ function drawdownChart(price,w,h){
 function monteCarlo(price,days,paths){
   const ret=M.logret(price);const mu=M.mean(ret),sig=M.std(ret);const p0=M.last(price);
   const rng=mulberry32(hashStr(STATE.selected+"mc"));
-  const finals=[];const sample=[];
-  for(let k=0;k<paths;k++){let p=p0;const path=[p];for(let d=0;d<days;d++){p*=Math.exp(mu+sig*gauss(rng));path.push(p);}finals.push(p);if(k<60)sample.push(path);}
-  finals.sort((a,b)=>a-b);
-  return{p0,sample,p5:finals[Math.floor(paths*0.05)],p50:finals[Math.floor(paths*0.5)],p95:finals[Math.floor(paths*0.95)],days};
+  const all=[];
+  for(let k=0;k<paths;k++){let p=p0;const path=[p];for(let d=0;d<days;d++){p*=Math.exp(mu+sig*gauss(rng));path.push(p);}all.push(path);}
+  const bands={p5:[],p25:[],p50:[],p75:[],p95:[]};
+  for(let d=0;d<=days;d++){const col=all.map(pa=>pa[d]).sort((a,b)=>a-b);
+    bands.p5.push(col[Math.floor(paths*0.05)]);bands.p25.push(col[Math.floor(paths*0.25)]);
+    bands.p50.push(col[Math.floor(paths*0.5)]);bands.p75.push(col[Math.floor(paths*0.75)]);
+    bands.p95.push(col[Math.floor(paths*0.95)]);}
+  const at=d=>{d=Math.min(d,days);return{p5:bands.p5[d],p50:bands.p50[d],p95:bands.p95[d]};};
+  return{p0,days,paths,bands,sample:all.slice(0,40),h30:at(30),h60:at(60),h90:at(90)};
 }
 function mcChart(mc,w,h){
-  const all=mc.sample.flat();const min=Math.min(...all,mc.p5),max=Math.max(...all,mc.p95),rng=max-min||1;
-  const lines=mc.sample.map(path=>{const pts=path.map((p,i)=>(i?'L':'M')+(i/mc.days*w).toFixed(1)+' '+(h-(p-min)/rng*h).toFixed(1)).join(' ');return `<path d="${pts}" fill="none" stroke="var(--accent)" stroke-width=".5" opacity=".12"/>`;}).join("");
-  const y=v=>h-(v-min)/rng*h;
-  return `<svg viewBox="0 0 ${w} ${h}" height="${h}">${lines}
-    <line x1="0" y1="${y(mc.p95)}" x2="${w}" y2="${y(mc.p95)}" stroke="var(--up)" stroke-width="1" stroke-dasharray="3 2"/>
-    <line x1="0" y1="${y(mc.p50)}" x2="${w}" y2="${y(mc.p50)}" stroke="var(--txt-1)" stroke-width="1"/>
-    <line x1="0" y1="${y(mc.p5)}" x2="${w}" y2="${y(mc.p5)}" stroke="var(--down)" stroke-width="1" stroke-dasharray="3 2"/>
-    <text x="3" y="${y(mc.p95)-3}" fill="var(--up)" font-size="9" font-family="monospace">${fmt(mc.p95)}</text>
-    <text x="3" y="${y(mc.p5)+10}" fill="var(--down)" font-size="9" font-family="monospace">${fmt(mc.p5)}</text></svg>`;
+  const lo=Math.min(...mc.bands.p5),hi=Math.max(...mc.bands.p95),rng=hi-lo||1;
+  const X=d=>d/mc.days*w,Y=v=>h-(v-lo)/rng*h;
+  const area=(loK,hiK)=>{let up='';mc.bands[hiK].forEach((v,d)=>up+=`${d?'L':'M'}${X(d).toFixed(1)} ${Y(v).toFixed(1)} `);let dn='';for(let d=mc.days;d>=0;d--)dn+=`L${X(d).toFixed(1)} ${Y(mc.bands[loK][d]).toFixed(1)} `;return up+dn+'Z';};
+  const samp=mc.sample.slice(0,18).map(pa=>{let d='';pa.forEach((p,i)=>d+=`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p).toFixed(1)} `);return `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width=".4" opacity=".10"/>`;}).join("");
+  const med=mc.bands.p50.map((v,d)=>`${d?'L':'M'}${X(d).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+  const marks=[30,60,90].filter(d=>d<=mc.days).map(d=>`<line x1="${X(d).toFixed(1)}" y1="0" x2="${X(d).toFixed(1)}" y2="${h}" stroke="var(--line-2)" stroke-width=".5" stroke-dasharray="2 3"/><text x="${X(d).toFixed(1)}" y="10" fill="var(--txt-2)" font-size="8" text-anchor="middle">${d}d</text>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}">
+    <path d="${area('p5','p95')}" fill="var(--accent)" opacity=".10"/>
+    <path d="${area('p25','p75')}" fill="var(--accent)" opacity=".18"/>
+    ${samp}<path d="${med}" fill="none" stroke="var(--accent-2)" stroke-width="1.4"/>${marks}
+    <text x="3" y="${Y(M.last(mc.bands.p95))-3}" fill="var(--up)" font-size="9" font-family="monospace">${fmt(M.last(mc.bands.p95))}</text>
+    <text x="3" y="${Y(M.last(mc.bands.p5))+10}" fill="var(--down)" font-size="9" font-family="monospace">${fmt(M.last(mc.bands.p5))}</text></svg>`;
+}
+function mcConeTable(mc){
+  const row=(lab,hz)=>{const r5=hz.p5/mc.p0-1,r50=hz.p50/mc.p0-1,r95=hz.p95/mc.p0-1;
+    return `<tr><td style="font-family:var(--sans)">${lab}</td><td class="down">${fmt(hz.p5)} <span class="muted">(${pct(r5,0)})</span></td><td>${fmt(hz.p50)} <span class="muted">(${pct(r50,0)})</span></td><td class="up">${fmt(hz.p95)} <span class="muted">(${pct(r95,0)})</span></td></tr>`;};
+  return `<table class="qt" style="margin-top:8px"><tr><th>Horizonte</th><th>P5 · downside</th><th>Mediana</th><th>P95 · upside</th></tr>
+    ${row("30 días",mc.h30)}${row("60 días",mc.h60)}${row("90 días",mc.h90)}</table>`;
 }
 function factorRadar(f,w,h){
   const keys=["value","quality","size","lowvol","profit","mom"];const labels=["Value","Quality","Size","LowVol","Profit","Mom"];
@@ -843,11 +914,36 @@ function corrMatrix(syms){
   syms.forEach((s,i)=>{html+=`<tr><td style="color:var(--txt-1)">${s}</td>`;syms.forEach((_,j)=>{const c=i===j?1:M.corr(rets[i],rets[j]);const col=c>0?`rgba(22,199,132,${Math.abs(c)*.5})`:`rgba(234,57,67,${Math.abs(c)*.5})`;html+=`<td class="corr-cell" style="background:${col}">${c.toFixed(2)}</td>`;});html+=`</tr>`;});
   return html+`</table>`;
 }
+function sectorAgg(){
+  const out=[];
+  SECTORS.forEach(s=>{
+    const list=UNIVERSE.filter(a=>a.sector===s);if(!list.length)return;
+    const cap=M.sum(list.map(a=>a.marketCap||0));
+    const score=M.mean(list.slice(0,14).map(a=>analyze(a.ticker).meta.score));
+    out.push({sector:s,cap,score,count:list.length});
+  });
+  return out.sort((a,b)=>b.cap-a.cap);
+}
+/* Binary-slice treemap — tamaño ∝ capitalización, color ∝ Institutional Score */
+function treemap(items,x,y,w,h,horiz){
+  if(items.length===1)return[{item:items[0],x,y,w,h}];
+  const total=M.sum(items.map(i=>i.cap))||1;let acc=0,split=1;
+  for(let i=0;i<items.length;i++){acc+=items[i].cap;if(acc>=total/2){split=i+1;break;}}
+  split=M.clip(split,1,items.length-1);
+  const a=items.slice(0,split),b=items.slice(split);const ca=M.sum(a.map(i=>i.cap));
+  if(horiz){const wa=w*ca/total;return treemap(a,x,y,wa,h,!horiz).concat(treemap(b,x+wa,y,w-wa,h,!horiz));}
+  const ha=h*ca/total;return treemap(a,x,y,w,ha,!horiz).concat(treemap(b,x,y+ha,w,h-ha,!horiz));
+}
 function sectorHeatmap(){
-  const secScores={};SECTORS.forEach(s=>{const list=UNIVERSE.filter(a=>a.sector===s).slice(0,12);if(list.length){secScores[s]=M.mean(list.map(a=>analyze(a.ticker).meta.score));}});
-  const entries=Object.entries(secScores);
-  const cols=4;
-  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:4px">${entries.map(([s,sc])=>`<div style="background:${heatColor(sc)};border-radius:6px;padding:8px 6px;text-align:center"><div style="font-size:10px;color:#06080c;font-weight:700">${s}</div><div style="font-family:var(--mono);font-size:14px;color:#06080c;font-weight:800">${Math.round(sc)}</div></div>`).join("")}</div>`;
+  const data=sectorAgg();const W=560,H=240;
+  const cells=treemap(data,0,0,W,H,true);
+  const rects=cells.map(c=>{
+    const col=heatColor(c.item.score);const big=c.w>54&&c.h>26;
+    const ink=c.item.score>52?'#04130c':'#1a0708';
+    return `<g class="tmcell"><rect x="${c.x.toFixed(1)}" y="${c.y.toFixed(1)}" width="${Math.max(0,c.w-1.5).toFixed(1)}" height="${Math.max(0,c.h-1.5).toFixed(1)}" rx="3" fill="${col}"/>${big?`<text x="${(c.x+6).toFixed(1)}" y="${(c.y+16).toFixed(1)}" fill="${ink}" font-size="10" font-weight="700">${c.item.sector}</text><text x="${(c.x+6).toFixed(1)}" y="${(c.y+30).toFixed(1)}" fill="${ink}" font-size="12" font-weight="800" font-family="monospace">${Math.round(c.item.score)}</text>`:''}</g>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" height="${H}" preserveAspectRatio="none">${rects}</svg>
+    <div class="legend"><span><span class="dot" style="background:var(--down)"></span>Score bajo</span><span><span class="dot" style="background:var(--warn)"></span>Medio</span><span><span class="dot" style="background:var(--up)"></span>Alto</span><span class="muted">· tamaño ∝ capitalización</span></div>`;
 }
 function rollingBeta(price,w,h){
   const ret=M.logret(price);const br=benchmark().ret;
@@ -965,12 +1061,19 @@ function renderPortfolio(){
       <div style="font-size:12px;margin-bottom:8px;color:${gradeColor}"><b>${_gscore>68?'SÍ — Apto para mandato institucional':_gscore>52?'PARCIAL — Requiere ajustes':'NO — Riesgo/diversificación insuficiente'}</b></div>
       ${verdict.map(([t,s])=>`<span class="tag ${t}">${s}</span>`).join("")}</div>`;
     html+=`<div class="card" style="margin-top:10px"><h3>Contribución al Riesgo</h3>${riskContribChart(syms)}</div>`;
+    html+=`<div class="card" style="margin-top:10px"><h3>Exposición Sectorial Agregada</h3>${sectorExposure()}</div>`;
   }
   $("#rightBody").innerHTML=html;
   document.querySelectorAll("[data-opt]").forEach(e=>e.onclick=()=>optimize(e.dataset.opt));
   document.querySelectorAll("[data-wi]").forEach(e=>e.onchange=()=>{STATE.portfolio[+e.dataset.wi].w=Math.max(0,parseFloat(e.target.value)||0);renderRight();});
   document.querySelectorAll("[data-rm]").forEach(e=>e.onclick=()=>{STATE.portfolio.splice(+e.dataset.rm,1);renderRight();});
   $("#pfAddBtn").onclick=()=>{const t=$("#pfAdd").value.toUpperCase().trim();if(t&&UNIVERSE.find(a=>a.ticker===t)&&!STATE.portfolio.find(p=>p.ticker===t)){STATE.portfolio.push({ticker:t,w:0.1});renderRight();log("PORTFOLIO","Añadido "+t+" a la cartera","var(--up)");}else if(t)toast("Ticker no encontrado: "+t);};
+}
+function sectorExposure(){
+  const totalW=M.sum(STATE.portfolio.map(p=>p.w))||1;const exp={};
+  STATE.portfolio.forEach(p=>{const sec=genSeries(p.ticker).meta.sector;exp[sec]=(exp[sec]||0)+p.w/totalW;});
+  const entries=Object.entries(exp).sort((a,b)=>b[1]-a[1]);const mx=Math.max(...entries.map(e=>e[1]),0.01);
+  return entries.map(([s,wt])=>`<div class="model-bar"><div class="mn">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${(wt/mx*100).toFixed(0)}%;background:var(--accent-2)"></div></div><div class="mv">${(wt*100).toFixed(0)}%</div></div>`).join("");
 }
 function riskContribChart(syms){
   const cov=covMatrix(syms);const totalW=M.sum(STATE.portfolio.map(p=>p.w))||1;const w=STATE.portfolio.map(p=>p.w/totalW);
@@ -1073,14 +1176,14 @@ function init(){
   $("#addInput").onkeydown=e=>{if(e.key==="Enter")$("#addBtn").click();};
   $("#addBtn").onclick=()=>{const t=$("#addInput").value.toUpperCase().trim();if(!t)return;
     if(UNIVERSE.find(a=>a.ticker===t)){if(!STATE.custom.includes(t))STATE.custom.push(t);STATE.group="CUSTOM";renderUniverseTabs();selectAsset(t);}
-    else{UNIVERSE.push({ticker:t,name:t+" Corp",sector:SECTORS[hashStr(t)%SECTORS.length],region:"US"});STATE.custom.push(t);STATE.group="CUSTOM";renderUniverseTabs();renderAssetList();selectAsset(t);log("UNIVERSE","Ticker sintético "+t+" inyectado","var(--up)");}
+    else{const sec=SECTORS[hashStr(t)%SECTORS.length];UNIVERSE.push({ticker:t,name:t+" Corp",sector:sec,region:"US",marketCap:assignCap(t,sec)});STATE.custom.push(t);STATE.group="CUSTOM";renderUniverseTabs();renderAssetList();selectAsset(t);log("UNIVERSE","Ticker sintético "+t+" inyectado","var(--up)");}
     $("#addInput").value="";};
   $("#scanBtn").onclick=()=>{STATE.centerTab="scanner";renderCenterTabs();renderCenterBody();};
   $("#exportBtn").onclick=exportData;
   // clocks + live feed
   tickClock();setInterval(tickClock,1000);
   setInterval(()=>{const[t,m,c]=LOG_MSGS[Math.floor(Math.random()*LOG_MSGS.length)];log(t,m,c);},4200);
-  setInterval(()=>{$("#logMeta").textContent="uptime "+Math.floor(performance.now()/1000)+"s · 520 activos · 19 modelos";},1000);
+  setInterval(()=>{$("#logMeta").textContent="uptime "+Math.floor(performance.now()/1000)+"s · 520 activos · 20 modelos";},1000);
   // keyboard shortcuts
   document.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT")return;
