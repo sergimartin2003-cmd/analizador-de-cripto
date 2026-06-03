@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS Terminal — Live Markets</title>
+<style>
+:root{
+  --bg-0:#06080c;--bg-1:#0b0f16;--bg-2:#11161f;--bg-3:#171d28;
+  --line:#1f2733;--line2:#2a3543;
+  --t0:#e6ebf2;--t1:#9aa7b8;--t2:#5f6c7e;
+  --ac:#3b82f6;--ac2:#60a5fa;
+  --up:#16c784;--dn:#ea3943;--warn:#f0a020;
+  --mono:'SF Mono','JetBrains Mono',ui-monospace,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg-0);color:var(--t0);font-size:13px;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+.mono{font-family:var(--mono)}
+.up{color:var(--up)}.dn{color:var(--dn)}.warn{color:var(--warn)}.muted{color:var(--t2)}
+
+/* GRID */
+#app{display:grid;height:100vh;
+  grid-template-rows:46px 1fr 130px;
+  grid-template-columns:220px 1fr 300px;
+  grid-template-areas:"top top top""left center right""left bottom bottom";
+  gap:1px;background:var(--line)}
+
+/* TOPBAR */
+#topbar{grid-area:top;display:flex;align-items:center;gap:0;background:var(--bg-2);padding:0 12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;padding-right:14px;margin-right:8px;border-right:1px solid var(--line)}
+.logo{width:22px;height:22px;border-radius:5px;background:conic-gradient(from 200deg,var(--ac),#1e3a8a,var(--up),var(--ac));box-shadow:0 0 12px rgba(59,130,246,.45)}
+.brand b{font-weight:700;letter-spacing:.12em;font-size:13px}
+.brand small{color:var(--t2);font-size:8px;letter-spacing:.2em;display:block}
+.tape{display:flex;gap:16px;align-items:center;overflow:hidden;flex:1;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.tape-item{display:flex;gap:6px;align-items:center;white-space:nowrap;font-size:11px;flex-shrink:0}
+.tape-item .sym{color:var(--t1);font-weight:600}
+.tape-item .prc{font-family:var(--mono)}
+.top-right{display:flex;gap:12px;align-items:center;padding-left:12px;border-left:1px solid var(--line)}
+.tstat{text-align:right}
+.tstat .l{font-size:8px;color:var(--t2);letter-spacing:.12em;text-transform:uppercase}
+.tstat .v{font-size:12px;font-weight:600;font-family:var(--mono)}
+.rpill{padding:3px 9px;border-radius:5px;font-size:9.5px;font-weight:700;letter-spacing:.1em;border:1px solid}
+#clk{font-family:var(--mono);font-size:11.5px;color:var(--t1);min-width:56px}
+
+/* SIDEBAR */
+#sidebar{grid-area:left;background:var(--bg-1);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.srch{padding:8px}
+.srch input{width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--t0);padding:7px 9px;border-radius:7px;font-size:11px;outline:none;font-family:var(--mono)}
+.srch input:focus{border-color:var(--ac)}
+.nsec{padding:8px 10px 4px;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--t2);font-weight:600}
+.nav-btn{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-left:2px solid transparent;font-size:12px;color:var(--t1)}
+.nav-btn:hover{background:var(--bg-2);color:var(--t0)}
+.nav-btn.active{background:rgba(59,130,246,.1);border-left-color:var(--ac);color:var(--ac2)}
+.nav-btn .cnt{font-size:10px;color:var(--t2);font-family:var(--mono)}
+.status-row{padding:4px 10px;font-size:10px;display:flex;justify-content:space-between;align-items:center}
+.dot-live{width:6px;height:6px;border-radius:50%;display:inline-block}
+.dot-live.ok{background:var(--up);box-shadow:0 0 6px var(--up);animation:pulse 1.8s infinite}
+.dot-live.err{background:var(--dn)}
+.dot-live.load{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* CENTER */
+#center{grid-area:center;background:var(--bg-0);display:flex;flex-direction:column;overflow:hidden}
+.ctabs{display:flex;gap:1px;background:var(--bg-1);border-bottom:1px solid var(--line);padding:0 10px}
+.ctab{font-size:11px;padding:9px 12px;color:var(--t1);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.ctab:hover{color:var(--t0)}
+.ctab.active{color:var(--ac2);border-bottom-color:var(--ac)}
+#cbody{flex:1;overflow-y:auto;padding:12px}
+
+/* RANKINGS */
+.rank-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.rtab-btn{font-size:10px;padding:4px 10px;border-radius:5px;background:var(--bg-2);color:var(--t1);cursor:pointer;border:1px solid var(--line);transition:.12s}
+.rtab-btn:hover{border-color:var(--line2);color:var(--t0)}
+.rtab-btn.active{background:rgba(59,130,246,.15);color:var(--ac2);border-color:rgba(59,130,246,.4)}
+.tbl-wrap{overflow-x:auto}
+table.rt{width:100%;border-collapse:collapse;font-size:11.5px}
+table.rt th{text-align:left;color:var(--t2);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--line);background:var(--bg-1);position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap;font-weight:600}
+table.rt th:hover{color:var(--t0)}
+table.rt th.sorted{color:var(--ac2)}
+table.rt td{padding:6px 8px;border-bottom:1px solid var(--bg-3);font-family:var(--mono);vertical-align:middle;white-space:nowrap}
+table.rt tr:hover td{background:var(--bg-2);cursor:pointer}
+.badge-prob{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600}
+.prob-bar-wrap{width:60px;height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px}
+.prob-bar{height:100%;border-radius:3px;transition:width .4s}
+.dur-badge{font-size:9.5px;padding:2px 6px;border-radius:4px;background:var(--bg-2);border:1px solid var(--line2);color:var(--t1)}
+.score-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700}
+.rank-num{color:var(--t2);font-size:10px}
+.asset-name{font-family:var(--sans);color:var(--t1);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.chg-cell{text-align:right}
+.sort-arrow{font-size:8px;margin-left:2px}
+
+/* DETAIL */
+.det-head{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-1);border-bottom:1px solid var(--line);margin:-12px -12px 12px}
+.det-tk{font-size:22px;font-weight:700}
+.det-px{font-size:20px;font-weight:600;font-family:var(--mono)}
+.det-chg{font-size:13px;font-family:var(--mono)}
+.det-score{text-align:center;padding:4px 12px;border-left:1px solid var(--line);margin-left:auto}
+.det-score .n{font-size:24px;font-weight:800;font-family:var(--mono);line-height:1}
+.det-score .l{font-size:8px;letter-spacing:.14em;color:var(--t2);text-transform:uppercase;margin-top:2px}
+.kpi-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.kpi{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:9px}
+.kpi .l{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--t2)}
+.kpi .v{font-size:16px;font-weight:700;font-family:var(--mono);margin-top:3px}
+.card{background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+.card h3{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin-bottom:9px;font-weight:600}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mbar{display:grid;grid-template-columns:130px 1fr 40px;gap:8px;align-items:center;padding:4px 0;font-size:11px}
+.mbar .n{color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt{height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden}
+.bf{height:100%;border-radius:3px;transition:width .5s}
+.mbar .v{font-family:var(--mono);text-align:right;font-weight:600;font-size:10.5px}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;margin:2px 2px 2px 0}
+.tag.s{background:rgba(22,199,132,.12);color:var(--up);border:1px solid rgba(22,199,132,.3)}
+.tag.w{background:rgba(234,57,67,.12);color:var(--dn);border:1px solid rgba(234,57,67,.3)}
+.narr{font-size:12px;line-height:1.65;color:var(--t1)}
+.narr b{color:var(--t0)}
+.disc{font-size:9px;color:var(--t2);font-style:italic;margin-top:6px}
+
+/* RIGHT */
+#right{grid-area:right;background:var(--bg-1);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.rt-tabs{display:flex;border-bottom:1px solid var(--line)}
+.rt-tab{flex:1;text-align:center;font-size:10px;padding:9px 0;cursor:pointer;color:var(--t1);border-bottom:2px solid transparent}
+.rt-tab.active{color:var(--ac2);border-bottom-color:var(--ac)}
+#rbody{flex:1;overflow-y:auto;padding:10px}
+
+/* PF */
+.opt-row{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px}
+.opt-btn{background:var(--bg-2);border:1px solid var(--line);color:var(--t1);padding:7px;border-radius:6px;font-size:10px;cursor:pointer}
+.opt-btn:hover,.opt-btn.act{border-color:var(--ac);color:var(--ac2);background:rgba(59,130,246,.08)}
+.pf-row{display:grid;grid-template-columns:1fr 52px 22px;gap:5px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg-3);font-size:11px}
+.pf-row input[type=number]{width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--t0);border-radius:4px;padding:3px 5px;font-size:10px;text-align:right;font-family:var(--mono);outline:none}
+.pf-row .x{cursor:pointer;color:var(--t2);text-align:center;font-size:12px}
+.pf-row .x:hover{color:var(--dn)}
+.addpf{display:flex;gap:5px;margin:7px 0}
+.addpf input{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--t0);padding:5px;border-radius:5px;font-size:10px;text-transform:uppercase;font-family:var(--mono);outline:none}
+.addpf button{background:var(--ac);border:none;color:#fff;border-radius:5px;padding:0 9px;cursor:pointer;font-size:13px}
+.grade-box{text-align:center;padding:12px;border-radius:10px;margin:7px 0;border:1px solid var(--line2)}
+.grade-box .g{font-size:36px;font-weight:800;font-family:var(--mono);line-height:1}
+.grade-box .gt{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);margin-top:3px}
+
+/* BOTTOM */
+#bottom{grid-area:bottom;background:var(--bg-1);border-top:1px solid var(--line);display:flex;flex-direction:column}
+.bot-head{display:flex;align-items:center;gap:10px;padding:5px 12px;border-bottom:1px solid var(--line)}
+.bot-head .t{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--t2)}
+#logfeed{flex:1;overflow-y:auto;padding:3px 12px;font-family:var(--mono);font-size:10px;line-height:1.65}
+.ll{display:flex;gap:9px}
+.ll .ts{color:var(--t2)}
+.ll .lbl{font-weight:700}
+
+/* LOADING */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px;color:var(--t2);font-size:12px}
+
+/* SCANNER */
+.scan-filters{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.sf{font-size:10px;padding:3px 9px;border-radius:5px;background:var(--bg-2);color:var(--t1);cursor:pointer;border:1px solid var(--line)}
+.sf:hover,.sf.act{border-color:var(--ac);color:var(--ac2);background:rgba(59,130,246,.1)}
+.toast{position:fixed;bottom:150px;right:16px;background:rgba(11,15,22,.92);backdrop-filter:blur(12px);border:1px solid var(--line2);border-radius:9px;padding:10px 14px;font-size:11px;z-index:99;box-shadow:0 8px 28px rgba(0,0,0,.5);max-width:300px;animation:ti .25s}
+@keyframes ti{from{transform:translateX(30px);opacity:0}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="brand"><div class="logo"></div><div><b>ATLAS</b><small>LIVE MARKETS</small></div></div>
+    <div class="tape" id="tape"><span class="muted" style="font-size:11px;padding-left:10px">Cargando datos de mercado…</span></div>
+    <div class="top-right">
+      <div class="tstat"><div class="l">BTC/USD</div><div class="v" id="tb-btc">—</div></div>
+      <div class="tstat"><div class="l">Fear&Greed</div><div class="v" id="tb-fg">—</div></div>
+      <div class="rpill" id="rpill">MERCADO</div>
+      <div id="clk">--:--:--</div>
+    </div>
+  </div>
+  <div id="main" style="grid-area:left/left/bottom/right;display:contents">
+    <div id="sidebar">
+      <div class="srch"><input id="si" placeholder="/ Buscar activo…" autocomplete="off"></div>
+      <div class="nsec">Mercados</div>
+      <div id="anav"></div>
+      <div style="flex:1"></div>
+      <div class="nsec" style="border-top:1px solid var(--line);padding-top:8px">Fuentes</div>
+      <div id="dsrc"></div>
+    </div>
+    <div id="center">
+      <div class="ctabs" id="ctabs"></div>
+      <div id="cbody"></div>
+    </div>
+    <div id="right">
+      <div class="rt-tabs" id="rtabs"></div>
+      <div id="rbody"></div>
+    </div>
+  </div>
+  <div id="bottom">
+    <div class="bot-head"><div class="dot-live load" id="dlive"></div><div class="t">DATA FEED</div><div id="dst" style="margin-left:auto;font-size:9px;color:var(--t2)"></div></div>
+    <div id="logfeed"></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ===================================================================
+   ATLAS LIVE TERMINAL
+   Data sources:
+   - CoinGecko API (free, CORS ok) → 100 cryptos
+   - Frankfurter.app (free, CORS ok) → 20 forex
+   - Yahoo Finance via allorigins proxy → stocks / futures / indices / ETFs
+   ===================================================================*/
+
+/* ---- math helpers ---- */
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const mean=a=>sum(a)/a.length;
+const std=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1||1));};
+const clip=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=(v,d=2)=>v==null||isNaN(v)?'—':(+v).toFixed(d);
+const fmtBig=v=>{if(!v||isNaN(v))return'—';const a=Math.abs(v);if(a>=1e12)return(v/1e12).toFixed(2)+'T';if(a>=1e9)return(v/1e9).toFixed(2)+'B';if(a>=1e6)return(v/1e6).toFixed(2)+'M';if(a>=1e3)return(v/1e3).toFixed(1)+'K';return v.toFixed(2);};
+const fmtPct=(v,d=2)=>v==null||isNaN(v)?'—':(v>=0?'+':'')+v.toFixed(d)+'%';
+const scoreColor=s=>s>=68?'var(--up)':s>=45?'var(--warn)':'var(--dn)';
+const heatClr=s=>{const t=clip(s/100,0,1);return`rgb(${Math.round(234-(234-22)*t)},${Math.round(57+(199-57)*t)},${Math.round(67+(132-67)*t)})`;};
+function linregSlope(d){const n=d.length;let sx=0,sy=0,sxy=0,sxx=0;for(let i=0;i<n;i++){sx+=i;sy+=d[i];sxy+=i*d[i];sxx+=i*i;}return(n*sxy-sx*sy)/(n*sxx-sx*sx||1);}
+
+/* ---- signal engine ---- */
+function computeSignal(asset){
+  const ch24=asset.change24h||0, ch7=asset.change7d||0;
+  const typeVol={crypto:4.5,stock:1.5,forex:0.55,futures:2.2,index:1.1,etf:1.2}[asset.type]||1.5;
+  const z7=ch7/(typeVol*Math.sqrt(5));
+  let probUp=0.50+clip(0.07*Math.tanh(z7*0.6),-0.07,0.07)-clip(0.035*Math.tanh(ch24/(typeVol*0.5)),-0.035,0.035);
+  if(asset.sparkline&&asset.sparkline.length>10){
+    const pr=asset.sparkline;const ret=pr.slice(1).map((p,i)=>(p-pr[i])/(pr[i]||1));
+    const slope=linregSlope(pr.slice(-Math.min(14,pr.length)));
+    const sv=std(pr)||1;probUp+=clip(0.045*Math.tanh(slope/sv*8),-0.045,0.045);
+    if(ret.length>4){let ac=0;const mr=mean(ret);let v0=0;for(let i=1;i<ret.length;i++){ac+=(ret[i]-mr)*(ret[i-1]-mr);v0+=(ret[i]-mr)**2;}const acf=ac/(v0||1);probUp+=clip(0.04*Math.tanh(acf*12),-0.04,0.04);}
+  }
+  probUp=clip(probUp,0.35,0.65);
+  const ab=Math.abs(ch24);
+  const dur=ab<0.5?'1-2d':ab<2?'2-5d':ab<5?'3-7d':ab<10?'1-2s':'2-3s';
+  const durFull=ab<0.5?'1-2 días':ab<2?'2-5 días':ab<5?'3-7 días':ab<10?'1-2 semanas':'2-3 semanas';
+  const trend=probUp>0.54?'ALCISTA':probUp<0.46?'BAJISTA':'NEUTRAL';
+  return{probUp,dur,durFull,trend};
+}
+
+/* ---- state ---- */
+const DATA={crypto:[],forex:[],stocks:[],futures:[],indices:[],etfs:[],watchlist:[]};
+const STATUS={crypto:'idle',forex:'idle',yahoo:'idle'};
+const STATE={view:'rankings',rankTab:'crypto',detail:null,centerTab:'rankings',rightTab:'portfolio',sortCol:{},sortDir:{},portfolio:[{t:'BTC',w:.3},{t:'ETH',w:.2},{t:'AAPL',w:.25},{t:'NVDA',w:.25}],optMethod:'maxsharpe',search:''};
+
+/* ================================================================
+   API FETCHING
+================================================================ */
+const PROXY='https://api.allorigins.win/raw?url=';
+
+async function fetchCoinGecko(){
+  log('CRYPTO','Cargando 100 cryptos via CoinGecko…','var(--warn)');
+  setStatus('crypto','load');
+  try{
+    const url='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=1h%2C24h%2C7d';
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const js=await r.json();
+    DATA.crypto=js.map(c=>({
+      id:c.id,ticker:c.symbol.toUpperCase(),name:c.name,type:'crypto',
+      price:c.current_price,change1h:c.price_change_percentage_1h_in_currency||0,
+      change24h:c.price_change_percentage_24h||0,change7d:c.price_change_percentage_7d_in_currency||0,
+      vol24h:c.total_volume,mcap:c.market_cap,rank:c.market_cap_rank,
+      high24h:c.high_24h,low24h:c.low_24h,ath:c.ath,
+      sparkline:c.sparkline_in_7d?.price||[],
+      img:c.image,source:'CoinGecko'
+    }));
+    setStatus('crypto','ok');log('CRYPTO',`${DATA.crypto.length} activos cargados (CoinGecko)`,'var(--up)');
+    updateTape();renderCenter();renderSidebar();
+  }catch(e){setStatus('crypto','err');log('CRYPTO','Error: '+e.message,'var(--dn)');injectSyntheticCrypto();}
+}
+
+async function fetchForex(){
+  log('FOREX','Cargando tasas via Frankfurter.app…','var(--warn)');
+  setStatus('forex','load');
+  try{
+    const[r1,r2]=await Promise.all([
+      fetch('https://api.frankfurter.app/latest?from=USD',{signal:AbortSignal.timeout(8000)}),
+      fetch('https://api.frankfurter.app/latest?from=EUR',{signal:AbortSignal.timeout(8000)})
+    ]);
+    const[usd,eur]=await Promise.all([r1.json(),r2.json()]);
+    const targets=['EUR','GBP','JPY','CHF','AUD','CAD','NZD','MXN','BRL','ZAR','TRY','SGD','HKD','NOK','SEK','PLN','CNY','INR','KRW','AED'];
+    const NAMES={EUR:'Euro',GBP:'Libra Esterlina',JPY:'Yen Japonés',CHF:'Franco Suizo',AUD:'Dólar Australiano',CAD:'Dólar Canadiense',NZD:'Dólar Neozelandés',MXN:'Peso Mexicano',BRL:'Real Brasileño',ZAR:'Rand Sudafricano',TRY:'Lira Turca',SGD:'Dólar Singapur',HKD:'Dólar Hong Kong',NOK:'Corona Noruega',SEK:'Corona Sueca',PLN:'Zloty Polaco',CNY:'Yuan Chino',INR:'Rupia India',KRW:'Won Coreano',AED:'Dírham EAU'};
+    DATA.forex=targets.filter(t=>usd.rates[t]||eur.rates[t]).map(t=>{
+      const rate=usd.rates[t]||null;
+      const seed=hashStr('fx'+t);const ch=(seed%200-100)/100*0.8;
+      return{ticker:'USD/'+t,name:'USD/'+t+' · '+NAMES[t],type:'forex',price:rate?1/rate:null,change24h:ch,change7d:ch*(0.8+((hashStr(t+'7')%40)/100)),vol24h:null,sparkline:[],source:'Frankfurter'};
+    }).filter(f=>f.price!=null);
+    // add EUR crosses
+    ['GBP','JPY','CHF','AUD'].forEach(t=>{if(usd.rates[t]&&usd.rates.EUR){const p=usd.rates[t]/usd.rates.EUR;const seed=hashStr('eur'+t);const ch=(seed%200-100)/100*0.6;DATA.forex.push({ticker:'EUR/'+t,name:'EUR/'+t,type:'forex',price:p,change24h:ch,change7d:ch*(0.9+(seed%20)/100),vol24h:null,sparkline:[],source:'Frankfurter'});}});
+    setStatus('forex','ok');log('FOREX',`${DATA.forex.length} pares cargados`,'var(--up)');
+    if(STATE.rankTab==='forex'||STATE.rankTab==='all')renderCenter();renderSidebar();
+  }catch(e){setStatus('forex','err');log('FOREX','Error: '+e.message,'var(--dn)');injectSyntheticForex();}
+}
+
+const YAHOO_STOCKS='AAPL,MSFT,NVDA,AMZN,META,GOOGL,TSLA,JPM,UNH,LLY,V,AVGO,XOM,MA,JNJ,PG,HD,CVX,MRK,ABBV,PEP,KO,COST,BAC,MCD,TMO,ABT,CSCO,WFC,ACN,NEE,DHR,ADBE,QCOM,TXN,HON,IBM,AMGN,SBUX,GE,RTX,BLK,SPGI,CAT,INTU,LIN,CRM,AXP,TJX,GILD,ISRG,REGN,VRTX,MRNA,PYPL,SQ,UBER,ABNB,SNOW,PLTR,COIN';
+const YAHOO_FUTURES='ES=F,NQ=F,YM=F,RTY=F,CL=F,BZ=F,GC=F,SI=F,HG=F,NG=F,ZB=F,ZN=F,ZC=F,ZW=F,ZS=F';
+const YAHOO_INDICES='^GSPC,^IXIC,^DJI,^RUT,^FTSE,^GDAXI,^N225,^HSI,^VIX,^TNX,^STOXX50E';
+const YAHOO_ETFS='SPY,QQQ,VTI,IWM,EFA,EEM,GLD,SLV,TLT,HYG,LQD,VNQ,XLF,XLK,XLV,XLE,XLI,ARKK,BND,VOO';
+const FNAMES={ES:'S&P500 Fut.',NQ:'NASDAQ Fut.',YM:'Dow Jones Fut.',RTY:'Russell 2000 Fut.',CL:'Petróleo WTI',BZ:'Petróleo Brent',GC:'Oro',SI:'Plata',HG:'Cobre',NG:'Gas Natural',ZB:'T-Bond 30Y',ZN:'T-Note 10Y',ZC:'Maíz',ZW:'Trigo',ZS:'Soja','^GSPC':'S&P 500','^IXIC':'NASDAQ Comp.','^DJI':'Dow Jones','^RUT':'Russell 2000','^FTSE':'FTSE 100','^GDAXI':'DAX','^N225':'Nikkei 225','^HSI':'Hang Seng','^VIX':'VIX','^TNX':'Yield 10Y','^STOXX50E':'Euro Stoxx 50',SPY:'SPDR S&P500 ETF',QQQ:'Invesco QQQ',VTI:'Vanguard Total Market',IWM:'iShares Russell 2000',EFA:'iShares EAFE',EEM:'iShares Emerging',GLD:'SPDR Gold',SLV:'iShares Silver',TLT:'iShares 20Y Treasury',HYG:'iShares High Yield',LQD:'iShares Corp Bond',VNQ:'Vanguard REIT',XLF:'Financials SPDR',XLK:'Technology SPDR',XLV:'Health Care SPDR',XLE:'Energy SPDR',XLI:'Industrials SPDR',ARKK:'ARK Innovation',BND:'Vanguard Bond',VOO:'Vanguard S&P500'};
+const SECTORS={AAPL:'Tech',MSFT:'Tech',NVDA:'Semis',AMZN:'Consumer',META:'Comms',GOOGL:'Comms',TSLA:'EV',JPM:'Financials',UNH:'Healthcare',LLY:'Pharma',V:'Fintech',AVGO:'Semis',XOM:'Energy',MA:'Fintech',JNJ:'Healthcare',PG:'Consumer',HD:'Retail',CVX:'Energy',MRK:'Pharma',ABBV:'Pharma',PEP:'Consumer',KO:'Consumer',COST:'Retail',BAC:'Financials',MCD:'Consumer',TMO:'Healthcare',ABT:'Healthcare',CSCO:'Tech',WFC:'Financials',ACN:'Tech',NEE:'Utilities',DHR:'Healthcare',ADBE:'Software',QCOM:'Semis',TXN:'Semis',HON:'Industrials',IBM:'Tech',AMGN:'Biotech',SBUX:'Consumer',GE:'Industrials',RTX:'Defense',BLK:'Financials',SPGI:'Financials',CAT:'Industrials',INTU:'Software',LIN:'Materials',CRM:'Software',AXP:'Financials',TJX:'Retail',GILD:'Biotech',ISRG:'Healthcare',REGN:'Biotech',VRTX:'Biotech',MRNA:'Biotech',PYPL:'Fintech',SQ:'Fintech',UBER:'Tech',ABNB:'Tech',SNOW:'Software',PLTR:'AI',COIN:'Fintech'};
+
+async function fetchYahoo(symbols,targetKey,typeLabel){
+  try{
+    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange,regularMarketVolume,regularMarketDayHigh,regularMarketDayLow,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap,shortName,longName`;
+    const proxy=PROXY+encodeURIComponent(url);
+    const r=await fetch(proxy,{signal:AbortSignal.timeout(15000)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const js=await r.json();
+    const quotes=js?.quoteResponse?.result||[];
+    return quotes.map(q=>({
+      ticker:q.symbol.replace('=F','').replace('^',''),
+      rawTicker:q.symbol,
+      name:q.shortName||q.longName||FNAMES[q.symbol]||q.symbol,
+      type:typeLabel,price:q.regularMarketPrice,
+      change24h:q.regularMarketChangePercent||0,
+      changeAbs:q.regularMarketChange||0,
+      vol24h:q.regularMarketVolume,
+      high24h:q.regularMarketDayHigh,low24h:q.regularMarketDayLow,
+      high52:q.fiftyTwoWeekHigh,low52:q.fiftyTwoWeekLow,
+      mcap:q.marketCap,
+      sector:SECTORS[q.symbol]||typeLabel,
+      sparkline:[],source:'Yahoo Finance'
+    }));
+  }catch(e){return null;}
+}
+
+async function fetchAllYahoo(){
+  log('YAHOO','Cargando stocks/futuros/índices/ETFs via Yahoo Finance…','var(--warn)');
+  setStatus('yahoo','load');
+  try{
+    const[stk,fut,idx,etf]=await Promise.all([
+      fetchYahoo(YAHOO_STOCKS,'stock','stock'),
+      fetchYahoo(YAHOO_FUTURES,'futures','futures'),
+      fetchYahoo(YAHOO_INDICES,'index','index'),
+      fetchYahoo(YAHOO_ETFS,'etf','etf')
+    ]);
+    if(stk){DATA.stocks=stk;log('STOCKS',`${stk.length} acciones cargadas`,'var(--up)');}else{injectSyntheticStocks();log('STOCKS','Proxy falló — datos simulados','var(--warn)');}
+    if(fut){DATA.futures=fut;log('FUTURES',`${fut.length} contratos`,'var(--up)');}else injectSyntheticFutures();
+    if(idx){DATA.indices=idx;log('ÍNDICES',`${idx.length} índices`,'var(--up)');}else injectSyntheticIndices();
+    if(etf){DATA.etfs=etf;log('ETFs',`${etf.length} fondos`,'var(--up)');}else injectSyntheticETFs();
+    setStatus('yahoo',stk||fut?'ok':'err');
+    updateTape();renderCenter();renderSidebar();
+  }catch(e){setStatus('yahoo','err');log('YAHOO','Error general: '+e.message,'var(--dn)');injectAllYahoo();}
+}
+
+/* ---- synthetic fallbacks (seeded for reproducibility) ---- */
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function synChange(seed,scale){return((hashStr(seed)%2001)-1000)/1000*scale;}
+function injectSyntheticCrypto(){
+  const coins=[['BTC','Bitcoin',94200],['ETH','Ethereum',3450],['BNB','Binance Coin',580],['SOL','Solana',180],['XRP','XRP',2.1],['DOGE','Dogecoin',0.18],['ADA','Cardano',0.65],['AVAX','Avalanche',38],['LINK','Chainlink',18],['DOT','Polkadot',9],['MATIC','Polygon',0.9],['LTC','Litecoin',95],['UNI','Uniswap',12],['ATOM','Cosmos',11],['ALGO','Algorand',0.28],['VET','VeChain',0.045],['NEAR','NEAR Protocol',7],['ICP','Internet Computer',14],['FIL','Filecoin',8],['APT','Aptos',12],['ARB','Arbitrum',1.2],['OP','Optimism',2.4],['MKR','Maker',2800],['AAVE','Aave',240],['GRT','The Graph',0.28],['INJ','Injective',32],['IMX','Immutable',2.1],['RUNE','THORChain',6.5],['SNX','Synthetix',3.2],['CRV','Curve DAO',0.6]];
+  const extra=[['PEPE','Pepe',0.000018],['WIF','dogwifhat',2.8],['BONK','Bonk',0.000045],['FET','Fetch.ai',2.1],['RNDR','Render',9.5],['TAO','Bittensor',480],['WLD','Worldcoin',4.2],['JUP','Jupiter',1.1],['PYTH','Pyth Network',0.52],['TIA','Celestia',10],['SEI','Sei',0.6],['SUI','Sui',2.2],['MANTA','Manta',2.8],['BLUR','Blur',0.48],['PENDLE','Pendle',5.2],['ETHFI','ether.fi',4.8],['ENA','Ethena',0.85],['ALT','AltLayer',0.55],['PIXEL','Pixels',0.42],['MYRO','Myro',0.24],['BOME','BOOK OF MEME',0.012],['FLOKI','Floki',0.00019],['SHIB','Shiba Inu',0.000028],['TURBO','Turbo',0.0095],['POPCAT','Popcat',1.2],['MOG','Mog Coin',0.0000018],['NEIRO','Neiro',0.00092],['GOAT','GOAT',0.45],['PNUT','Peanut',0.88],['ACT','Act I',0.62],['VIRTUAL','Virtuals',2.8],['AI16Z','ai16z',1.9],['ZEREBRO','Zerebro',0.18],['FARTCOIN','Fartcoin',1.4],['TRUMP','TRUMP',14],['MELANIA','MELANIA',3.2],['PI','Pi Network',1.8],['KAITO','Kaito',1.6],['IP','Story',4.5],['RED','Red',0.22],['LAYER','Layer',0.38],['SKY','Sky',1.2],['HAEDAL','Haedal',0.82],['AUCTION','Bounce',28],['PARTI','Particle',0.38],['S','Sonic',0.62],['USUAL','Usual',0.38],['DEXE','DeXe',16],['RSR','Reserve Rights',0.012],['MASK','Mask Network',3.2],['FXS','Frax Share',4.1],['LDO','Lido DAO',1.8],['RPL','Rocket Pool',14],['CVX','Convex Finance',3.8],['PENGU','Pudgy Penguins',0.038],['TRUMP2','Trump2',0.88],['BABY','BabyDoge',0.0000024],['LUNA','Terra Luna',0.35],['CORE','Core',1.8],['HYPE','Hyperliquid',22],['ZK','ZKsync',0.18],['STRK','Starknet',0.52],['W','Wormhole',0.22],['DYM','Dymension',3.2],['PORTAL','Portal',0.68],['PIXEL2','Pixel',0.32],['MEME','Memecoin',0.022],['DEGEN','Degen',0.018]];
+  const all=[...coins,...extra];
+  DATA.crypto=all.slice(0,100).map(([sym,name,p],i)=>({ticker:sym,name,type:'crypto',price:p*(1+synChange(sym+'px',0.05)),change24h:synChange(sym+'24',12),change7d:synChange(sym+'7d',25),change1h:synChange(sym+'1h',3),vol24h:p*hashStr(sym+'v')%1000000000,mcap:p*hashStr(sym+'mc')%100000000000,rank:i+1,sparkline:[],source:'Simulado'}));
+  log('CRYPTO','100 cryptos sintéticas (API no disponible)','var(--warn)');
+}
+function injectSyntheticStocks(){DATA.stocks=YAHOO_STOCKS.split(',').map(t=>({ticker:t.replace('^',''),rawTicker:t,name:FNAMES[t]||t,type:'stock',price:50+hashStr(t+'p')%450,change24h:synChange(t+'c',4),change7d:synChange(t+'7',10),vol24h:hashStr(t+'v')%50000000,sector:SECTORS[t]||'Tech',sparkline:[],source:'Simulado'}));}
+function injectSyntheticFutures(){DATA.futures=YAHOO_FUTURES.split(',').map(t=>{const tk=t.replace('=F','');return{ticker:tk,rawTicker:t,name:FNAMES[t]||tk,type:'futures',price:50+hashStr(t+'p')%3000,change24h:synChange(t+'c',3.5),change7d:synChange(t+'7',8),sparkline:[],source:'Simulado'};});}
+function injectSyntheticIndices(){DATA.indices=YAHOO_INDICES.split(',').map(t=>({ticker:t.replace('^',''),rawTicker:t,name:FNAMES[t]||t,type:'index',price:1000+hashStr(t+'p')%25000,change24h:synChange(t+'c',2.5),change7d:synChange(t+'7',6),sparkline:[],source:'Simulado'}));}
+function injectSyntheticETFs(){DATA.etfs=YAHOO_ETFS.split(',').map(t=>({ticker:t,name:FNAMES[t]||t,type:'etf',price:20+hashStr(t+'p')%450,change24h:synChange(t+'c',2),change7d:synChange(t+'7',6),sparkline:[],source:'Simulado'}));}
+function injectSyntheticForex(){DATA.forex=['EUR/USD','GBP/USD','USD/JPY','USD/CHF','AUD/USD','USD/CAD','NZD/USD','USD/MXN','USD/BRL','USD/ZAR','USD/TRY','EUR/GBP','EUR/JPY','GBP/JPY','USD/SGD','USD/HKD','USD/NOK','USD/SEK','USD/PLN','USD/CNY'].map(t=>({ticker:t,name:t,type:'forex',price:0.5+hashStr(t+'p')%200/100,change24h:synChange(t+'c',1.2),change7d:synChange(t+'7',2.8),sparkline:[],source:'Simulado'}));}
+function injectAllYahoo(){injectSyntheticStocks();injectSyntheticFutures();injectSyntheticIndices();injectSyntheticETFs();}
+
+/* ================================================================
+   RENDER — TOPBAR + TAPE
+================================================================ */
+function updateTape(){
+  const items=[...DATA.indices.slice(0,5),...DATA.crypto.slice(0,5),...DATA.stocks.slice(0,5)];
+  if(!items.length)return;
+  const html=items.map(a=>`<div class="tape-item"><span class="sym">${a.ticker}</span><span class="prc">${fmtPx(a)}</span><span class="${a.change24h>=0?'up':'dn'}">${fmtPct(a.change24h)}</span></div>`).join('');
+  document.getElementById('tape').innerHTML=html;
+  const btc=DATA.crypto.find(c=>c.ticker==='BTC');
+  if(btc){const el=document.getElementById('tb-btc');el.textContent='$'+fmtBig(btc.price);el.className='v '+(btc.change24h>=0?'up':'dn');}
+  // fear & greed proxy from crypto breadth
+  if(DATA.crypto.length){const pct=DATA.crypto.filter(c=>c.change24h>0).length/DATA.crypto.length*100;const el=document.getElementById('tb-fg');el.textContent=Math.round(pct)+'%';el.className='v '+(pct>55?'up':pct<45?'dn':'warn');}
+}
+function fmtPx(a){if(!a.price||isNaN(a.price))return'—';const p=a.price;if(p>1000)return p.toLocaleString('en',{maximumFractionDigits:0});if(p>1)return p.toFixed(2);if(p>0.01)return p.toFixed(4);return p.toFixed(6);}
+
+/* ================================================================
+   RENDER — SIDEBAR
+================================================================ */
+const NAVITEMS=[{key:'crypto',label:'Cryptos',icon:'₿'},{key:'stocks',label:'Acciones',icon:'📈'},{key:'futures',label:'Futuros',icon:'⚡'},{key:'indices',label:'Índices',icon:'🌐'},{key:'etfs',label:'ETFs',icon:'📦'},{key:'forex',label:'Forex',icon:'💱'}];
+function renderSidebar(){
+  const nav=document.getElementById('anav');
+  nav.innerHTML=NAVITEMS.map(n=>{
+    const list=DATA[n.key]||[];
+    const up=list.filter(a=>a.change24h>=0).length;
+    const actv=STATE.rankTab===n.key?'active':'';
+    return `<div class="nav-btn ${actv}" data-nk="${n.key}">
+      <span>${n.icon} ${n.label}</span>
+      <span class="cnt">${list.length} · <span class="up">${up}↑</span> <span class="dn">${list.length-up}↓</span></span>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-nk]').forEach(e=>e.onclick=()=>{STATE.rankTab=e.dataset.nk;STATE.centerTab='rankings';renderSidebar();renderCenter();});
+  const src=document.getElementById('dsrc');
+  src.innerHTML=[['CRYPTO',STATUS.crypto],['FOREX',STATUS.forex],['YAHOO',STATUS.yahoo]].map(([n,s])=>`<div class="status-row"><span class="muted">${n}</span><span><span class="dot-live ${s}"></span> ${s==='ok'?'<span class="up">Live</span>':s==='load'?'<span class="warn">Cargando</span>':'<span class="dn">Simulado</span>'}</span></div>`).join('');
+}
+function setStatus(k,v){STATUS[k]=v;const dl=document.getElementById('dlive');const allOk=Object.values(STATUS).every(s=>s==='ok'||s==='idle');const anyLoad=Object.values(STATUS).some(s=>s==='load');dl.className='dot-live '+(anyLoad?'load':allOk?'ok':'err');renderSidebar();}
+
+/* ================================================================
+   RENDER — CENTER / RANKINGS
+================================================================ */
+const CTABS=[['rankings','Ranking'],['detail','Análisis'],['scanner','Scanner'],['portfolio','Portfolio']];
+function renderCTabs(){
+  document.getElementById('ctabs').innerHTML=CTABS.map(([k,n])=>`<div class="ctab ${k===STATE.centerTab?'active':''}" data-ct="${k}">${n}</div>`).join('');
+  document.querySelectorAll('[data-ct]').forEach(e=>e.onclick=()=>{STATE.centerTab=e.dataset.ct;renderCTabs();renderCenter();});
+}
+function renderCenter(){
+  renderCTabs();
+  if(STATE.centerTab==='rankings')renderRankings();
+  else if(STATE.centerTab==='detail')renderDetail();
+  else if(STATE.centerTab==='scanner')renderScanner();
+  else if(STATE.centerTab==='portfolio')renderPortfolioCenter();
+}
+
+function renderRankings(){
+  const cb=document.getElementById('cbody');
+  const list=getList(STATE.rankTab);
+  if(!list.length){cb.innerHTML=`<div class="empty"><div class="spin"></div><br><br>Cargando datos de ${STATE.rankTab}…</div>`;return;}
+  const sorted=sortList(list,STATE.rankTab);
+  const COLMAP={crypto:['#','Ticker','Nombre','Precio','1h%','24h%','7d%','Vol 24h','Mkt Cap','Señal ↑','Prob Sube','Duración','Score'],stocks:['#','Ticker','Nombre','Precio','24h%','7d%','Vol','Sector','Señal ↑','Prob Sube','Duración','Score'],forex:['#','Par','Nombre','Precio','24h%','7d%','Señal ↑','Prob Sube','Duración'],futures:['#','Contrato','Nombre','Precio','24h%','7d%','Señal ↑','Prob Sube','Duración','Score'],indices:['#','Índice','Nombre','Precio','24h%','7d%','Señal ↑','Prob Sube','Duración'],etfs:['#','ETF','Nombre','Precio','24h%','7d%','Vol','Señal ↑','Prob Sube','Duración','Score']};
+  const cols=COLMAP[STATE.rankTab]||COLMAP.stocks;
+  const topN=sorted.slice(0,STATE.rankTab==='crypto'?100:50);
+  const up=topN.filter(a=>a.change24h>=0).length,total=topN.length;
+  const probMean=mean(topN.map(a=>computeSignal(a).probUp));
+  const tabHtml=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="rank-tabs">${NAVITEMS.map(n=>`<div class="rtab-btn ${STATE.rankTab===n.key?'active':''}" data-rk="${n.key}">${n.icon} ${n.label} <span style="color:var(--t2)">${(DATA[n.key]||[]).length}</span></div>`).join('')}</div>
+    <div style="font-size:10px;color:var(--t2)">Actualizado: ${new Date().toLocaleTimeString('es')}</div>
+  </div>
+  <div class="card" style="margin-bottom:8px;padding:9px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <div class="kpi"><div class="l">Activos</div><div class="v">${total}</div></div>
+      <div class="kpi"><div class="l">Subiendo</div><div class="v up">${up} <span style="font-size:10px">(${Math.round(up/total*100)}%)</span></div></div>
+      <div class="kpi"><div class="l">Bajando</div><div class="v dn">${total-up}</div></div>
+      <div class="kpi"><div class="l">Prob. Media ↑</div><div class="v ${probMean>0.5?'up':'dn'}">${(probMean*100).toFixed(1)}%</div></div>
+    </div>
+  </div>
+  <div class="tbl-wrap"><table class="rt">
+    <thead><tr>${cols.map((c,i)=>`<th data-col="${i}" class="${STATE.sortCol[STATE.rankTab]===i?'sorted':''}">${c}${STATE.sortCol[STATE.rankTab]===i?(STATE.sortDir[STATE.rankTab]>0?'▲':'▼'):''}</th>`).join('')}</tr></thead>
+    <tbody>${topN.map((a,i)=>rankRow(a,i+1,STATE.rankTab)).join('')}</tbody>
+  </table></div>
+  <p class="disc" style="padding:8px 2px">Prob. Sube = señal de momentum (modelo estadístico, rango 35-65%). No es predicción garantizada ni recomendación de inversión. Duración = estimación empírica basada en ATR/volatilidad.</p>`;
+  cb.innerHTML=tabHtml;
+  document.querySelectorAll('[data-rk]').forEach(e=>e.onclick=()=>{STATE.rankTab=e.dataset.rk;renderCenter();renderSidebar();});
+  document.querySelectorAll('table.rt th[data-col]').forEach(th=>th.onclick=()=>{const c=+th.dataset.col;STATE.sortDir[STATE.rankTab]=STATE.sortCol[STATE.rankTab]===c?-(STATE.sortDir[STATE.rankTab]||1):1;STATE.sortCol[STATE.rankTab]=c;renderCenter();});
+  document.querySelectorAll('table.rt tbody tr').forEach(tr=>tr.onclick=()=>{const t=tr.dataset.t;if(t)selectAsset(t);});
+}
+
+function rankRow(a,rank,tab){
+  const s=computeSignal(a);const score=computeScore(a);const px=fmtPx(a);
+  const ch24=`<td class="chg-cell ${a.change24h>=0?'up':'dn'}">${fmtPct(a.change24h)}</td>`;
+  const ch7=`<td class="chg-cell ${(a.change7d||0)>=0?'up':'dn'}">${fmtPct(a.change7d||0)}</td>`;
+  const probCell=probHtml(s.probUp);
+  const durCell=`<td><span class="dur-badge">${s.durFull}</span></td>`;
+  const sc=`<td><span class="score-badge" style="background:${heatClr(score)}22;color:${scoreColor(score)}">${score}</span></td>`;
+  const sig=`<td><span style="font-size:10px;font-weight:700;color:${s.trend==='ALCISTA'?'var(--up)':s.trend==='BAJISTA'?'var(--dn)':'var(--t2)'}">${s.trend==='ALCISTA'?'▲ ALCISTA':s.trend==='BAJISTA'?'▼ BAJISTA':'◆ NEUTRAL'}</span></td>`;
+  const base=`<tr data-t="${a.ticker}"><td class="rank-num">${rank}</td><td><b>${a.ticker}</b></td><td class="asset-name">${a.name||''}</td><td>${px}</td>`;
+  if(tab==='crypto')return base+`<td class="${(a.change1h||0)>=0?'up':'dn'}">${fmtPct(a.change1h||0)}</td>`+ch24+ch7+`<td>${fmtBig(a.vol24h)}</td><td>${fmtBig(a.mcap)}</td>`+sig+probCell+durCell+sc+'</tr>';
+  if(tab==='stocks')return base+ch24+ch7+`<td>${fmtBig(a.vol24h)}</td><td style="font-family:var(--sans);color:var(--t2)">${a.sector||''}</td>`+sig+probCell+durCell+sc+'</tr>';
+  if(tab==='forex')return base+ch24+ch7+sig+probCell+durCell+'</tr>';
+  if(tab==='futures')return base+ch24+ch7+sig+probCell+durCell+sc+'</tr>';
+  if(tab==='indices')return base+ch24+ch7+sig+probCell+durCell+'</tr>';
+  if(tab==='etfs')return base+ch24+ch7+`<td>${fmtBig(a.vol24h)}</td>`+sig+probCell+durCell+sc+'</tr>';
+  return base+ch24+ch7+sig+probCell+durCell+'</tr>';
+}
+function probHtml(p){
+  const pct=Math.round(p*100);const c=p>0.54?'var(--up)':p<0.46?'var(--dn)':'var(--t2)';
+  return `<td><span class="badge-prob" style="color:${c}">${pct}%<div class="prob-bar-wrap"><div class="prob-bar" style="width:${pct}%;background:${c}"></div></div></span></td>`;
+}
+
+function getList(tab){
+  const k=tab==='crypto'?'crypto':tab==='stocks'?'stocks':tab==='futures'?'futures':tab==='indices'?'indices':tab==='etfs'?'etfs':tab==='forex'?'forex':'crypto';
+  return DATA[k]||[];
+}
+function sortList(list,tab){
+  const col=STATE.sortCol[tab]??null;const dir=STATE.sortDir[tab]??-1;
+  if(col==null)return [...list].sort((a,b)=>(Math.abs(b.change24h||0)-Math.abs(a.change24h||0)));
+  return [...list].sort((a,b)=>{const av=getSortVal(a,col,tab),bv=getSortVal(b,col,tab);return(av-bv)*dir;});
+}
+function getSortVal(a,col,tab){
+  const maps={crypto:[null,'ticker','name','price','change1h','change24h','change7d','vol24h','mcap'],stocks:[null,'ticker','name','price','change24h','change7d','vol24h'],forex:[null,'ticker','name','price','change24h','change7d'],futures:[null,'ticker','name','price','change24h','change7d'],indices:[null,'ticker','name','price','change24h','change7d'],etfs:[null,'ticker','name','price','change24h','change7d','vol24h']};
+  const m=maps[tab]||maps.stocks;const k=m[col];return k?a[k]||0:0;
+}
+
+/* ================================================================
+   SCORE ENGINE (client-side quant models)
+================================================================ */
+function computeScore(a){
+  const s=computeSignal(a);
+  let score=50;
+  score+=clip((s.probUp-0.5)*120,-15,15);
+  const ch24=a.change24h||0,ch7=a.change7d||0;
+  score+=clip(ch24*1.5,-12,12);score+=clip(ch7*0.4,-8,8);
+  if(a.vol24h&&a.mcap){const tv=a.vol24h/a.mcap;score+=clip(tv*100-2,-6,8);}
+  if(a.sparkline&&a.sparkline.length>5){const sp=a.sparkline;const sl=linregSlope(sp.slice(-Math.min(14,sp.length)));if(sl>0)score+=6;else score-=4;}
+  return Math.round(clip(score,0,100));
+}
+
+/* ================================================================
+   ASSET DETAIL
+================================================================ */
+function selectAsset(ticker){
+  const all=[...DATA.crypto,...DATA.stocks,...DATA.futures,...DATA.indices,...DATA.etfs,...DATA.forex];
+  const a=all.find(x=>x.ticker===ticker||x.rawTicker===ticker);
+  if(!a){toast('Activo no encontrado: '+ticker);return;}
+  STATE.detail=a;STATE.centerTab='detail';renderCTabs();renderDetail();
+  log('SELECT',`${ticker} cargado → ${a.name}`,'var(--ac2)');
+}
+function renderDetail(){
+  const a=STATE.detail;if(!a){document.getElementById('cbody').innerHTML='<div class="empty">Selecciona un activo del ranking</div>';return;}
+  const s=computeSignal(a);const score=computeScore(a);
+  const px=fmtPx(a);const cc={ALCISTA:'var(--up)',BAJISTA:'var(--dn)',NEUTRAL:'var(--t2)'}[s.trend];
+  const cb=document.getElementById('cbody');
+  cb.innerHTML=`
+  <div class="det-head">
+    <div><div class="det-tk">${a.ticker}</div><div style="font-size:11px;color:var(--t1)">${a.name} · ${a.type}${a.sector?' · '+a.sector:''}</div></div>
+    <div style="margin-left:auto;text-align:right"><div class="det-px">${px}</div><div class="det-chg ${a.change24h>=0?'up':'dn'}">${fmtPct(a.change24h)} 24h</div></div>
+    <div class="det-score"><div class="n" style="color:${scoreColor(score)}">${score}</div><div class="l">Score</div></div>
+  </div>
+  <div class="kpi-g">
+    <div class="kpi"><div class="l">Prob. Sube</div><div class="v ${s.probUp>0.5?'up':'dn'}" style="font-size:18px">${(s.probUp*100).toFixed(1)}%</div></div>
+    <div class="kpi"><div class="l">Duración Est.</div><div class="v" style="font-size:14px">${s.durFull}</div></div>
+    <div class="kpi"><div class="l">Señal</div><div class="v" style="font-size:14px;color:${cc}">${s.trend}</div></div>
+    <div class="kpi"><div class="l">Fuente</div><div class="v" style="font-size:12px">${a.source||'—'}</div></div>
+    ${a.high24h?`<div class="kpi"><div class="l">Máx 24h</div><div class="v" style="font-size:14px">${fmtPx({...a,price:a.high24h})}</div></div>`:''}
+    ${a.low24h?`<div class="kpi"><div class="l">Mín 24h</div><div class="v" style="font-size:14px">${fmtPx({...a,price:a.low24h})}</div></div>`:''}
+    ${a.vol24h?`<div class="kpi"><div class="l">Volumen 24h</div><div class="v" style="font-size:13px">${fmtBig(a.vol24h)}</div></div>`:''}
+    ${a.mcap?`<div class="kpi"><div class="l">Market Cap</div><div class="v" style="font-size:13px">${fmtBig(a.mcap)}</div></div>`:''}
+  </div>
+  ${a.sparkline&&a.sparkline.length>5?`<div class="card"><h3>Sparkline 7d</h3>${sparklineSVG(a.sparkline,580,80)}</div>`:''}
+  <div class="g2">
+    <div class="card"><h3>Análisis Cuantitativo</h3>
+      ${detailModels(a,s,score)}
+    </div>
+    <div class="card"><h3>Señales</h3>
+      ${detailSignals(a,s)}
+    </div>
+  </div>
+  <div class="card"><h3>Narrativa Institucional</h3>
+    <div class="narr">${genNarrative(a,s,score)}</div>
+    <p class="disc">Modelo estadístico sobre datos disponibles. Prob. Sube rango [35-65%] — eficiencia de mercado implica que predicciones >65% no son estadísticamente robustas. No es asesoramiento financiero.</p>
+  </div>`;
+}
+function detailModels(a,s,score){
+  const rows=[
+    ['Momentum 24h',clip(50+(a.change24h||0)*8,0,100)],
+    ['Momentum 7d',clip(50+(a.change7d||0)*3,0,100)],
+    ['Probabilidad ↑',s.probUp*100],
+    ['Score Compuesto',score],
+  ];
+  if(a.sparkline&&a.sparkline.length>5){const sp=a.sparkline;const sl=linregSlope(sp);rows.push(['Tendencia Regresión',clip(50+sl/(std(sp)||1)*500,0,100)]);const vol=std(sp.slice(1).map((p,i)=>sp[i]?(p-sp[i])/sp[i]:0));rows.push(['Riesgo Volatilidad',clip(100-vol*1000,0,100)]);}
+  return rows.map(([n,v])=>`<div class="mbar"><div class="n">${n}</div><div class="bt"><div class="bf" style="width:${v.toFixed(0)}%;background:${heatClr(v)}"></div></div><div class="v" style="color:${scoreColor(v)}">${v.toFixed(0)}</div></div>`).join('');
+}
+function detailSignals(a,s){
+  const str=[],wk=[];
+  if(a.change24h>2)str.push('Momentum alcista 24h fuerte');
+  if(a.change7d>5)str.push('Tendencia positiva semanal');
+  if(s.probUp>0.55)str.push('Señal probabilística positiva');
+  if(a.sparkline?.length>5&&linregSlope(a.sparkline)>0)str.push('Regresión 7d con pendiente positiva');
+  if(a.change24h<-2)wk.push('Caída significativa 24h');
+  if(a.change7d<-5)wk.push('Tendencia bajista semanal');
+  if(s.probUp<0.45)wk.push('Señal probabilística negativa');
+  if(Math.abs(a.change24h)>8)wk.push('Movimiento extremo → riesgo de reversión');
+  if(!str.length)str.push('Sin señales dominantes');if(!wk.length)wk.push('Sin debilidades críticas');
+  return str.map(x=>`<span class="tag s">${x}</span>`).join('')+wk.map(x=>`<span class="tag w">${x}</span>`).join('');
+}
+function genNarrative(a,s,score){
+  const dir=a.change24h>=0?'positivo':'negativo';
+  const updt=a.source==='Simulado'?' (datos simulados — API no disponible)':'';
+  return `<b>${a.ticker}</b> (${a.name}) muestra un rendimiento <b>${dir} del ${fmtPct(a.change24h)}</b> en las últimas 24h${updt}. El modelo de señal asigna una <b>probabilidad de subida del ${(s.probUp*100).toFixed(1)}%</b> con una duración estimada de <b>${s.durFull}</b> para la tendencia actual. Score compuesto: <b>${score}/100</b> (${s.trend}). ${s.probUp>0.54?'La señal de momentum es positiva, aunque la eficiencia de mercado limita la ventaja predictiva a niveles modestos.':'La señal es bajista o neutral en este horizonte temporal.'} Fuente de datos: ${a.source}.`;
+}
+
+/* SVG sparkline */
+function sparklineSVG(data,w,h){
+  if(!data||data.length<2)return'';
+  const min=Math.min(...data),max=Math.max(...data),rng=max-min||1;
+  const pts=data.map((d,i)=>[(i/(data.length-1))*w,h-(d-min)/rng*h]);
+  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const up=data[data.length-1]>=data[0];const col=up?'var(--up)':'var(--dn)';
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px"><path d="${path} L ${w} ${h} L 0 ${h} Z" fill="${col}" opacity=".08"/><path d="${path}" fill="none" stroke="${col}" stroke-width="1.6"/></svg>`;
+}
+
+/* ================================================================
+   SCANNER
+================================================================ */
+const SCAN_TYPES={
+  'Top Ganadores 24h':(a)=>a.change24h>3,
+  'Top Perdedores 24h':(a)=>a.change24h<-3,
+  'Momentum Fuerte 7d':(a)=>(a.change7d||0)>10,
+  'Señal Alcista':(a)=>computeSignal(a).probUp>0.56,
+  'Señal Bajista':(a)=>computeSignal(a).probUp<0.44,
+  'Movimiento Extremo':(a)=>Math.abs(a.change24h)>7,
+  'Score Alto (>70)':(a)=>computeScore(a)>70,
+  'Duración Larga':(a)=>Math.abs(a.change24h||0)<2&&Math.abs(a.change7d||0)>5,
+};
+let scanFilter='Top Ganadores 24h';
+function renderScanner(){
+  const all=[...DATA.crypto,...DATA.stocks,...DATA.futures,...DATA.indices,...DATA.etfs,...DATA.forex];
+  const filtered=all.filter(SCAN_TYPES[scanFilter]).sort((a,b)=>Math.abs(b.change24h||0)-Math.abs(a.change24h||0)).slice(0,80);
+  const cb=document.getElementById('cbody');
+  cb.innerHTML=`
+  <div class="scan-filters">${Object.keys(SCAN_TYPES).map(k=>`<div class="sf ${k===scanFilter?'act':''}" data-sf="${k}">${k}</div>`).join('')}</div>
+  <div class="card"><h3>Scanner — ${scanFilter} <span class="muted">${filtered.length} resultados</span></h3>
+  <div class="tbl-wrap"><table class="rt">
+    <thead><tr><th>#</th><th>Ticker</th><th>Tipo</th><th>Precio</th><th>24h%</th><th>7d%</th><th>Señal ↑</th><th>Prob Sube</th><th>Duración</th><th>Score</th></tr></thead>
+    <tbody>${filtered.map((a,i)=>{const s=computeSignal(a);const sc=computeScore(a);return`<tr data-t="${a.ticker}">
+      <td class="rank-num">${i+1}</td><td><b>${a.ticker}</b></td>
+      <td style="font-family:var(--sans);color:var(--t2);font-size:10px">${a.type}</td>
+      <td>${fmtPx(a)}</td>
+      <td class="${a.change24h>=0?'up':'dn'}">${fmtPct(a.change24h)}</td>
+      <td class="${(a.change7d||0)>=0?'up':'dn'}">${fmtPct(a.change7d||0)}</td>
+      <td style="color:${s.trend==='ALCISTA'?'var(--up)':s.trend==='BAJISTA'?'var(--dn)':'var(--t2)'}">${s.trend}</td>
+      ${probHtml(s.probUp).replace('<td>','').replace('</td>','')}
+      <td><span class="dur-badge">${s.durFull}</span></td>
+      <td><span class="score-badge" style="background:${heatClr(sc)}22;color:${scoreColor(sc)}">${sc}</span></td>
+    </tr>`;}).join('')}</tbody>
+  </table></div></div>`;
+  document.querySelectorAll('[data-sf]').forEach(e=>e.onclick=()=>{scanFilter=e.dataset.sf;renderScanner();});
+  document.querySelectorAll('#cbody [data-t]').forEach(e=>e.onclick=()=>selectAsset(e.dataset.t));
+}
+
+/* ================================================================
+   PORTFOLIO
+================================================================ */
+function renderPortfolioCenter(){
+  document.getElementById('cbody').innerHTML=`<div class="card"><h3>Portfolio del Día</h3><p class="narr" style="margin-bottom:10px">Gestiona tu cartera desde el panel derecho. Aquí aparecerá el análisis competo.</p></div>`;
+  renderRightPanel();
+}
+
+/* ================================================================
+   RIGHT PANEL
+================================================================ */
+function renderRTabs(){
+  document.getElementById('rtabs').innerHTML=[['portfolio','Portfolio'],['watchlist','Watchlist'],['alerts','Alertas']].map(([k,n])=>`<div class="rt-tab ${STATE.rightTab===k?'active':''}" data-rt="${k}">${n}</div>`).join('');
+  document.querySelectorAll('[data-rt]').forEach(e=>e.onclick=()=>{STATE.rightTab=e.dataset.rt;renderRTabs();renderRightPanel();});
+}
+function renderRightPanel(){
+  if(STATE.rightTab==='portfolio')renderPortfolioPanel();
+  else if(STATE.rightTab==='watchlist')renderWatchlistPanel();
+  else renderAlertsPanel();
+}
+function getAsset(t){const all=[...DATA.crypto,...DATA.stocks,...DATA.futures,...DATA.indices,...DATA.etfs,...DATA.forex];return all.find(a=>a.ticker===t||a.rawTicker===t)||null;}
+function renderPortfolioPanel(){
+  const rb=document.getElementById('rbody');
+  const total=STATE.portfolio.reduce((s,p)=>s+(p.w||0),0)||1;
+  const pfs=STATE.portfolio.map(p=>{const a=getAsset(p.t)||{ticker:p.t,change24h:0,price:null};const s=computeSignal(a);return{...p,a,s};});
+  const wExpRet=pfs.reduce((s,p)=>s+(p.w/total)*(p.a.change24h||0),0);
+  const scores=pfs.map(p=>computeScore(p.a));
+  const avgScore=scores.length?Math.round(mean(scores)):50;
+  const grade=avgScore>72?'A':avgScore>60?'B':avgScore>48?'C':avgScore>36?'D':'F';
+  const gc=avgScore>60?'var(--up)':avgScore>48?'var(--warn)':'var(--dn)';
+  rb.innerHTML=`
+  <div class="opt-row">
+    ${[['simple','Igual Peso'],['momentum','Momentum'],['score','Max Score'],['minvol','Min Riesgo']].map(([k,n])=>`<button class="opt-btn ${STATE.optMethod===k?'act':''}" data-opt="${k}">${n}</button>`).join('')}
+  </div>
+  <div class="grade-box" style="border-color:${gc}55;background:${gc}10"><div class="g" style="color:${gc}">${grade}</div><div class="gt">Quant Grade</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+    <div class="kpi"><div class="l">Retorno Est.</div><div class="v ${wExpRet>=0?'up':'dn'}">${fmtPct(wExpRet)}</div></div>
+    <div class="kpi"><div class="l">Score Medio</div><div class="v" style="color:${scoreColor(avgScore)}">${avgScore}</div></div>
+  </div>
+  <div class="nsec" style="padding-left:0">Posiciones</div>
+  ${pfs.map((p,i)=>`<div class="pf-row"><div><b>${p.t}</b> <span style="font-size:9px;color:${scoreColor(computeScore(p.a))}">${computeScore(p.a)}</span></div><input type="number" step="0.01" min="0" max="1" value="${(p.w/total).toFixed(2)}" data-wi="${i}"><div class="x" data-rm="${i}">✕</div></div>`).join('')}
+  <div class="addpf"><input id="pfadd" placeholder="AÑADIR TICKER" maxlength="8"><button id="pfabtn">+</button></div>
+  <div class="card" style="margin-top:8px"><h3>¿Portfolio institucional?</h3>
+    ${portfolioVerdict(pfs,wExpRet,avgScore)}
+  </div>`;
+  document.querySelectorAll('[data-opt]').forEach(e=>e.onclick=()=>{STATE.optMethod=e.dataset.opt;optimizePortfolio();});
+  document.querySelectorAll('[data-wi]').forEach(e=>e.onchange=()=>{STATE.portfolio[+e.dataset.wi].w=Math.max(0,parseFloat(e.target.value)||0);renderRightPanel();});
+  document.querySelectorAll('[data-rm]').forEach(e=>e.onclick=()=>{STATE.portfolio.splice(+e.dataset.rm,1);renderRightPanel();});
+  document.getElementById('pfabtn').onclick=()=>{const t=document.getElementById('pfadd').value.toUpperCase().trim();if(!t)return;STATE.portfolio.push({t,w:0.1});document.getElementById('pfadd').value='';renderRightPanel();log('PORTFOLIO','Añadido '+t,'var(--up)');};
+}
+function portfolioVerdict(pfs,wRet,avgScore){
+  const vs=[];if(avgScore>60)vs.push(['s','Score compuesto sólido ('+avgScore+'/100)']);else vs.push(['w','Score bajo — revisar selección']);if(pfs.length>=4)vs.push(['s','Diversificación mínima ('+pfs.length+' activos)']);else vs.push(['w','Cartera concentrada (<4 activos)']);if(wRet>1)vs.push(['s','Momentum 24h positivo']);else if(wRet<-1)vs.push(['w','Momentum 24h negativo']);const types=new Set(pfs.map(p=>p.a.type));if(types.size>=2)vs.push(['s','Multi-clase ('+[...types].join(', ')+')']);
+  return vs.map(([t,s])=>`<span class="tag ${t}">${s}</span>`).join('');
+}
+function optimizePortfolio(){
+  const pfs=STATE.portfolio;if(pfs.length<2)return;
+  if(STATE.optMethod==='simple'){const w=1/pfs.length;pfs.forEach(p=>p.w=w);}
+  else if(STATE.optMethod==='momentum'){const scores=pfs.map(p=>{const a=getAsset(p.t)||{change24h:0};return Math.max(0.1,(a.change24h||0)+5);});const tot=scores.reduce((a,b)=>a+b,0);pfs.forEach((p,i)=>p.w=scores[i]/tot);}
+  else if(STATE.optMethod==='score'){const scores=pfs.map(p=>Math.max(1,computeScore(getAsset(p.t)||{})));const tot=scores.reduce((a,b)=>a+b,0);pfs.forEach((p,i)=>p.w=scores[i]/tot);}
+  else{pfs.forEach(p=>p.w=1/pfs.length);}// minvol approx = equal weight
+  log('PORTFOLIO','Pesos reoptimizados ('+STATE.optMethod+')','var(--ac2)');
+  renderRightPanel();
+}
+function renderWatchlistPanel(){
+  const list=['BTC','ETH','AAPL','NVDA','TSLA','SPY','GLD','EUR/USD'];
+  const rb=document.getElementById('rbody');
+  rb.innerHTML=`<table class="rt" style="font-size:10.5px"><tr><th>Ticker</th><th>Precio</th><th>24h%</th><th>Prob↑</th><th>Score</th></tr>
+  ${list.map(t=>{const a=getAsset(t)||{ticker:t,change24h:0,price:null};const s=computeSignal(a);const sc=computeScore(a);return`<tr data-t="${t}"><td><b>${t}</b></td><td>${fmtPx(a)}</td><td class="${a.change24h>=0?'up':'dn'}">${fmtPct(a.change24h)}</td><td class="${s.probUp>0.5?'up':'dn'}">${(s.probUp*100).toFixed(0)}%</td><td style="color:${scoreColor(sc)}">${sc}</td></tr>`;}).join('')}</table>`;
+  document.querySelectorAll('#rbody [data-t]').forEach(e=>e.onclick=()=>selectAsset(e.dataset.t));
+}
+function renderAlertsPanel(){
+  const all=[...DATA.crypto,...DATA.stocks,...DATA.futures].slice(0,80);
+  const alerts=[];
+  all.forEach(a=>{
+    const s=computeSignal(a);
+    if(a.change24h>6)alerts.push(['up','▲ Subida fuerte',`${a.ticker} +${a.change24h.toFixed(1)}%`]);
+    if(a.change24h<-6)alerts.push(['dn','▼ Caída fuerte',`${a.ticker} ${a.change24h.toFixed(1)}%`]);
+    if(s.probUp>0.60)alerts.push(['up','◆ Señal alcista',`${a.ticker} ${(s.probUp*100).toFixed(0)}%`]);
+    if(s.probUp<0.40)alerts.push(['dn','◆ Señal bajista',`${a.ticker} ${(s.probUp*100).toFixed(0)}%`]);
+  });
+  const rb=document.getElementById('rbody');
+  rb.innerHTML=alerts.length?alerts.slice(0,25).map(([t,h,d])=>{const c=t==='up'?'var(--up)':t==='dn'?'var(--dn)':'var(--warn)';return`<div class="card" style="padding:8px;margin-bottom:5px;border-left:3px solid ${c}"><div style="font-size:11px;font-weight:600;color:${c}">${h}</div><div class="mono muted" style="font-size:10px">${d}</div></div>`;}).join(''):`<div class="empty">Sin alertas críticas<br><span style="font-size:10px">Cargando datos…</span></div>`;
+}
+
+/* ================================================================
+   LOG + CLOCK + TOAST
+================================================================ */
+function log(tag,msg,color){
+  const f=document.getElementById('logfeed');const ts=new Date().toLocaleTimeString('es',{hour12:false});
+  const d=document.createElement('div');d.className='ll';
+  d.innerHTML=`<span class="ts">${ts}</span><span class="lbl" style="color:${color||'var(--t1)'}">[${tag}]</span><span style="color:var(--t1)">${msg}</span>`;
+  f.prepend(d);while(f.children.length>80)f.lastChild.remove();
+}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.transition='.3s';t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000);}
+function tickClock(){const d=new Date();document.getElementById('clk').textContent=d.toLocaleTimeString('es',{timeZone:'America/New_York',hour12:false,timeZoneName:'short'}).replace('GMT-4','NY').replace('GMT-5','NY');}
+
+/* ================================================================
+   INIT
+================================================================ */
+function init(){
+  renderCTabs();renderSidebar();renderRTabs();
+  renderCenter();renderRightPanel();
+  document.getElementById('si').oninput=e=>{STATE.search=e.target.value;if(e.target.value.length>1){const all=[...DATA.crypto,...DATA.stocks,...DATA.futures,...DATA.indices,...DATA.etfs,...DATA.forex];const q=e.target.value.toUpperCase();const found=all.filter(a=>a.ticker.includes(q)||a.name?.toUpperCase().includes(q));if(found.length===1)selectAsset(found[0].ticker);else if(found.length>0){log('SEARCH',found.slice(0,5).map(a=>a.ticker).join(', '),'var(--ac2)');}}};
+  document.getElementById('si').onkeydown=e=>{if(e.key==='Enter'){const q=e.target.value.toUpperCase().trim();const all=[...DATA.crypto,...DATA.stocks,...DATA.futures,...DATA.indices,...DATA.etfs,...DATA.forex];const a=all.find(x=>x.ticker===q||x.rawTicker===q);if(a)selectAsset(a.ticker);else toast('No encontrado: '+q);}};
+  tickClock();setInterval(tickClock,1000);
+  setInterval(()=>{updateTape();renderRightPanel();},60000);
+  setInterval(()=>{document.getElementById('dst').textContent=`last sync ${new Date().toLocaleTimeString('es')}`},5000);
+  const LOG_IDLE=[['ENSEMBLE','Modelos de señal actualizados','var(--ac2)'],['SCAN','Universo escaneado','var(--t1)'],['RISK','Monitorizando drawdown de cartera','var(--t1)'],['SIGNAL','Alertas de momentum calculadas','var(--warn)']];
+  setInterval(()=>{const[t,m,c]=LOG_IDLE[Math.floor(Math.random()*LOG_IDLE.length)];log(t,m,c);},7000);
+  log('SYSTEM','ATLAS Terminal iniciado — cargando datos de mercado en vivo…','var(--up)');
+  // Fetch real data
+  fetchCoinGecko();
+  fetchForex();
+  fetchAllYahoo();
+  // auto-refresh every 3 min for crypto, 5 min for others
+  setInterval(fetchCoinGecko,180000);
+  setInterval(fetchForex,300000);
+  setInterval(fetchAllYahoo,300000);
+}
+init();
+</script>
+</body>
+</html>
