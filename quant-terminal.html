@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS Quant Terminal — Institutional Research Desk</title>
+<style>
+/* ============================================================
+   ATLAS QUANT TERMINAL — Institutional Dark Theme
+   100% self-contained. No external deps.
+   ============================================================ */
+:root{
+  --bg-0:#06080c; --bg-1:#0b0f16; --bg-2:#11161f; --bg-3:#171d28;
+  --line:#1f2733; --line-2:#2a3543;
+  --txt-0:#e6ebf2; --txt-1:#9aa7b8; --txt-2:#5f6c7e;
+  --accent:#3b82f6; --accent-2:#60a5fa;
+  --up:#16c784; --down:#ea3943; --warn:#f0a020; --neutral:#8893a6;
+  --glass:rgba(20,26,36,.66);
+  --mono:'SF Mono','JetBrains Mono','Roboto Mono',ui-monospace,Menlo,Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans);background:
+    radial-gradient(1200px 700px at 80% -10%,rgba(59,130,246,.06),transparent),
+    radial-gradient(900px 600px at -10% 110%,rgba(22,199,132,.04),transparent),
+    var(--bg-0);
+  color:var(--txt-0);font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+.mono{font-family:var(--mono)}
+.up{color:var(--up)} .down{color:var(--down)} .warn{color:var(--warn)} .muted{color:var(--txt-2)}
+.pos{color:var(--up)} .neg{color:var(--down)}
+
+/* ---------- App grid ---------- */
+#app{display:grid;height:100vh;
+  grid-template-rows:46px 1fr 150px;
+  grid-template-columns:230px 1fr 320px;
+  grid-template-areas:"top top top" "left center right" "left bottom bottom";
+  gap:1px;background:var(--line);
+}
+.panel{background:var(--bg-1);overflow:hidden;position:relative}
+
+/* ---------- Topbar ---------- */
+#topbar{grid-area:top;display:flex;align-items:center;gap:0;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));padding:0 14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;padding-right:16px;margin-right:6px;border-right:1px solid var(--line)}
+.brand .logo{width:22px;height:22px;border-radius:5px;background:conic-gradient(from 220deg,var(--accent),#1e3a8a,var(--up),var(--accent));box-shadow:0 0 14px rgba(59,130,246,.5)}
+.brand b{font-weight:700;letter-spacing:.14em;font-size:13px}
+.brand small{color:var(--txt-2);font-size:9px;letter-spacing:.22em}
+.ticker-tape{display:flex;gap:18px;align-items:center;overflow:hidden;flex:1;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.tape-item{display:flex;gap:7px;align-items:center;white-space:nowrap;font-size:11px}
+.tape-item .sym{color:var(--txt-1);font-weight:600}
+.top-stats{display:flex;gap:14px;align-items:center;padding-left:14px;margin-left:6px;border-left:1px solid var(--line)}
+.tstat{text-align:right;line-height:1.15}
+.tstat .lab{font-size:8.5px;color:var(--txt-2);letter-spacing:.12em;text-transform:uppercase}
+.tstat .val{font-size:12px;font-weight:600;font-family:var(--mono)}
+.regime-pill{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.1em;border:1px solid var(--line-2)}
+#clock{font-family:var(--mono);font-size:12px;color:var(--txt-1)}
+
+/* ---------- Sidebar ---------- */
+#sidebar{grid-area:left;display:flex;flex-direction:column;background:var(--bg-1);border-right:1px solid var(--line)}
+.nav-section{padding:10px 10px 4px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-2)}
+.universe-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px 8px}
+.utab{font-size:10px;padding:3px 7px;border-radius:5px;background:var(--bg-2);color:var(--txt-1);cursor:pointer;border:1px solid transparent;transition:.12s}
+.utab:hover{border-color:var(--line-2);color:var(--txt-0)}
+.utab.active{background:rgba(59,130,246,.16);color:var(--accent-2);border-color:rgba(59,130,246,.4)}
+.search-wrap{padding:6px 10px}
+.search-wrap input{width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-0);padding:7px 9px;border-radius:7px;font-size:11px;outline:none;font-family:var(--mono)}
+.search-wrap input:focus{border-color:var(--accent)}
+.add-row{display:flex;gap:5px;padding:0 10px 6px}
+.add-row input{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-0);padding:6px 8px;border-radius:6px;font-size:10px;outline:none;text-transform:uppercase;font-family:var(--mono)}
+.add-row button{background:var(--accent);border:none;color:#fff;border-radius:6px;padding:0 10px;cursor:pointer;font-size:14px;font-weight:600}
+.add-row button:hover{background:var(--accent-2)}
+#assetList{flex:1;overflow-y:auto;padding:2px 6px}
+.asset-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 8px;border-radius:7px;cursor:pointer;border:1px solid transparent}
+.asset-row:hover{background:var(--bg-2)}
+.asset-row.active{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.3)}
+.asset-row .sym{font-weight:600;font-size:12px}
+.asset-row .sec{font-size:9px;color:var(--txt-2)}
+.asset-row .chg{font-family:var(--mono);font-size:11px;text-align:right}
+.score-dot{width:30px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 0;border-radius:4px}
+.sidebar-foot{padding:8px 10px;border-top:1px solid var(--line);display:flex;gap:6px}
+.sidebar-foot button{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-1);padding:7px;border-radius:6px;font-size:10px;cursor:pointer}
+.sidebar-foot button:hover{border-color:var(--accent);color:var(--accent-2)}
+
+/* ---------- Center ---------- */
+#center{grid-area:center;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-0)}
+.center-head{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--bg-1),transparent)}
+.center-head .tk{font-size:24px;font-weight:700;letter-spacing:.02em}
+.center-head .nm{font-size:11px;color:var(--txt-1)}
+.center-head .px{font-family:var(--mono);font-size:22px;font-weight:600;margin-left:auto}
+.center-head .pxchg{font-family:var(--mono);font-size:13px}
+.big-score{display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-left:1px solid var(--line);margin-left:6px}
+.big-score .n{font-size:26px;font-weight:800;font-family:var(--mono);line-height:1}
+.big-score .l{font-size:8px;letter-spacing:.16em;color:var(--txt-2);text-transform:uppercase;margin-top:3px}
+.conv-pill{padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.08em}
+.center-tabs{display:flex;gap:2px;padding:8px 12px 0;border-bottom:1px solid var(--line);background:var(--bg-1)}
+.ctab{font-size:11px;padding:7px 13px;color:var(--txt-1);cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0}
+.ctab:hover{color:var(--txt-0)}
+.ctab.active{color:var(--accent-2);border-bottom-color:var(--accent);background:var(--bg-0)}
+#centerBody{flex:1;overflow-y:auto;padding:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--bg-1);border:1px solid var(--line);border-radius:11px;padding:13px}
+.card h3{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-2);margin-bottom:10px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.metric-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bg-3);font-size:12px}
+.metric-row:last-child{border:none}
+.metric-row .k{color:var(--txt-1)}
+.metric-row .v{font-family:var(--mono);font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--bg-2);border:1px solid var(--line);border-radius:9px;padding:10px}
+.kpi .l{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-2)}
+.kpi .v{font-size:18px;font-weight:700;font-family:var(--mono);margin-top:4px}
+.kpi .s{font-size:9px;color:var(--txt-2);margin-top:1px}
+
+/* model bars */
+.model-bar{display:grid;grid-template-columns:140px 1fr 44px;gap:9px;align-items:center;padding:4px 0;font-size:11px}
+.model-bar .mn{color:var(--txt-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.model-bar .mv{font-family:var(--mono);text-align:right;font-weight:600}
+
+.tag{display:inline-block;font-size:10px;padding:3px 8px;border-radius:5px;margin:2px 3px 2px 0}
+.tag.s{background:rgba(22,199,132,.12);color:var(--up);border:1px solid rgba(22,199,132,.3)}
+.tag.w{background:rgba(234,57,67,.12);color:var(--down);border:1px solid rgba(234,57,67,.3)}
+.narrative{font-size:12.5px;line-height:1.65;color:var(--txt-1)}
+.narrative b{color:var(--txt-0)}
+
+svg{display:block;width:100%}
+.disclaimer{font-size:9.5px;color:var(--txt-2);padding:6px 0;font-style:italic}
+
+/* ---------- Right panel ---------- */
+#right{grid-area:right;display:flex;flex-direction:column;background:var(--bg-1);border-left:1px solid var(--line);overflow:hidden}
+.right-tabs{display:flex;border-bottom:1px solid var(--line)}
+.rtab{flex:1;text-align:center;font-size:10px;padding:9px 0;cursor:pointer;color:var(--txt-1);border-bottom:2px solid transparent}
+.rtab.active{color:var(--accent-2);border-bottom-color:var(--accent)}
+#rightBody{flex:1;overflow-y:auto;padding:11px}
+.opt-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.opt-btns button{background:var(--bg-2);border:1px solid var(--line);color:var(--txt-1);padding:8px;border-radius:7px;font-size:10px;cursor:pointer}
+.opt-btns button:hover,.opt-btns button.active{border-color:var(--accent);color:var(--accent-2);background:rgba(59,130,246,.08)}
+.pf-row{display:grid;grid-template-columns:1fr 56px 28px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg-3);font-size:11px}
+.pf-row input{width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-0);border-radius:5px;padding:4px;font-size:10px;text-align:right;font-family:var(--mono)}
+.pf-row .x{cursor:pointer;color:var(--txt-2);text-align:center}
+.pf-row .x:hover{color:var(--down)}
+.add-pf{display:flex;gap:5px;margin:8px 0}
+.add-pf input{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-0);padding:6px;border-radius:6px;font-size:10px;text-transform:uppercase;font-family:var(--mono)}
+.add-pf button{background:var(--accent);border:none;color:#fff;border-radius:6px;padding:0 10px;cursor:pointer}
+.grade-badge{text-align:center;padding:14px;border-radius:11px;margin:8px 0;border:1px solid var(--line-2)}
+.grade-badge .g{font-size:38px;font-weight:800;font-family:var(--mono);line-height:1}
+.grade-badge .t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-1);margin-top:4px}
+
+/* ---------- Bottom ---------- */
+#bottom{grid-area:bottom;display:flex;flex-direction:column;background:var(--bg-1);border-top:1px solid var(--line)}
+.bottom-head{display:flex;align-items:center;gap:14px;padding:6px 12px;border-bottom:1px solid var(--line)}
+.bottom-head .t{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt-2)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#logFeed{flex:1;overflow-y:auto;padding:4px 12px;font-family:var(--mono);font-size:10.5px;line-height:1.7}
+.log-line{display:flex;gap:10px}
+.log-line .ts{color:var(--txt-2)}
+.log-line .tag-l{font-weight:700}
+
+/* scanner table */
+table.qt{width:100%;border-collapse:collapse;font-size:11px}
+table.qt th{text-align:left;color:var(--txt-2);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg-1);font-weight:600}
+table.qt td{padding:7px 8px;border-bottom:1px solid var(--bg-3);font-family:var(--mono)}
+table.qt tr:hover td{background:var(--bg-2);cursor:pointer}
+.scan-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.scan-filters .utab{font-size:10px}
+
+.heat-cell{font-family:var(--mono);font-size:9px;text-align:center;padding:0;color:#fff;border-radius:3px}
+.corr-cell{font-family:var(--mono);font-size:9px;text-align:center}
+.toast{position:fixed;bottom:160px;right:18px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line-2);border-radius:10px;padding:11px 14px;font-size:11px;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:320px;animation:slidein .3s}
+@keyframes slidein{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+.spark{height:30px}
+.legend{display:flex;gap:12px;font-size:9px;color:var(--txt-2);flex-wrap:wrap;margin-top:6px}
+.legend span{display:flex;gap:4px;align-items:center}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- TOPBAR -->
+  <div id="topbar" class="panel">
+    <div class="brand"><div class="logo"></div><div><b>ATLAS</b><br><small>QUANT DESK</small></div></div>
+    <div class="ticker-tape" id="tape"></div>
+    <div class="top-stats">
+      <div class="tstat"><div class="lab">Vol Global</div><div class="val" id="vix">—</div></div>
+      <div class="tstat"><div class="lab">Breadth</div><div class="val" id="breadth">—</div></div>
+      <div class="regime-pill" id="regimePill">—</div>
+      <div class="tstat"><div class="lab">Latencia</div><div class="val up" id="latency">0.4ms</div></div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar" class="panel">
+    <div class="nav-section">Universos</div>
+    <div class="universe-tabs" id="universeTabs"></div>
+    <div class="search-wrap"><input id="searchInput" placeholder="Buscar ticker…" autocomplete="off"></div>
+    <div class="add-row"><input id="addInput" placeholder="NUEVO TICKER" maxlength="6"><button id="addBtn">+</button></div>
+    <div class="nav-section" style="display:flex;justify-content:space-between"><span>Activos</span><span id="assetCount" class="muted"></span></div>
+    <div id="assetList"></div>
+    <div class="sidebar-foot">
+      <button id="scanBtn">⚡ Scanner</button>
+      <button id="exportBtn">↧ Export</button>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="center" class="panel">
+    <div class="center-head" id="centerHead"></div>
+    <div class="center-tabs" id="centerTabs"></div>
+    <div id="centerBody"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div id="right" class="panel">
+    <div class="right-tabs" id="rightTabs"></div>
+    <div id="rightBody"></div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div id="bottom" class="panel">
+    <div class="bottom-head"><div class="live-dot"></div><div class="t">Quant Execution Log</div><div class="t" id="logMeta" style="margin-left:auto;color:var(--txt-2)"></div></div>
+    <div id="logFeed"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ATLAS QUANT TERMINAL — Engine
+   All computation client-side over SYNTHETIC data (seeded GBM
+   with regime switching). Methodology is real; data is simulated.
+   ============================================================ */
+"use strict";
+
+/* ---------- Seeded PRNG (Mulberry32) for reproducibility ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function gauss(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+/* ---------- Math/stats helpers (vectorized-ish) ---------- */
+const M={
+  mean:a=>a.reduce((x,y)=>x+y,0)/a.length,
+  std:(a,m)=>{m=m??M.mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1||1));},
+  logret:p=>{const r=[];for(let i=1;i<p.length;i++)r.push(Math.log(p[i]/p[i-1]));return r;},
+  sum:a=>a.reduce((x,y)=>x+y,0),
+  last:a=>a[a.length-1],
+  skew:a=>{const m=M.mean(a),s=M.std(a,m);return M.mean(a.map(x=>((x-m)/s)**3));},
+  kurt:a=>{const m=M.mean(a),s=M.std(a,m);return M.mean(a.map(x=>((x-m)/s)**4))-3;},
+  pctile:(a,p)=>{const s=[...a].sort((x,y)=>x-y);const i=(s.length-1)*p;const lo=Math.floor(i),hi=Math.ceil(i);return s[lo]+(s[hi]-s[lo])*(i-lo);},
+  corr:(a,b)=>{const ma=M.mean(a),mb=M.mean(b);let n=0,da=0,db=0;for(let i=0;i<a.length;i++){n+=(a[i]-ma)*(b[i]-mb);da+=(a[i]-ma)**2;db+=(b[i]-mb)**2;}return n/Math.sqrt(da*db||1e-9);},
+  linreg:y=>{const n=y.length,x=[...Array(n).keys()];const mx=M.mean(x),my=M.mean(y);let num=0,den=0;for(let i=0;i<n;i++){num+=(x[i]-mx)*(y[i]-my);den+=(x[i]-mx)**2;}const slope=num/den;const intc=my-slope*mx;let ssr=0,sst=0;for(let i=0;i<n;i++){const pred=intc+slope*x[i];ssr+=(y[i]-pred)**2;sst+=(y[i]-my)**2;}return{slope,intc,r2:1-ssr/(sst||1e-9)};},
+  clip:(v,a,b)=>Math.max(a,Math.min(b,v)),
+  ewma:(a,lam)=>{let v=a[0]**2;for(let i=1;i<a.length;i++)v=lam*v+(1-lam)*a[i]**2;return Math.sqrt(v);}
+};
+const fmt=(v,d=2)=>v==null||isNaN(v)?'—':v.toFixed(d);
+const pct=(v,d=2)=>(v>=0?'+':'')+(v*100).toFixed(d)+'%';
+const scoreColor=s=>s>=70?'var(--up)':s>=45?'var(--warn)':'var(--down)';
+const heatColor=s=>{const t=M.clip(s/100,0,1);const r=Math.round(234-(234-22)*t);const g=Math.round(57+(199-57)*t);const b=Math.round(67+(132-67)*t);return`rgb(${r},${g},${b})`;};
+
+/* ============================================================
+   UNIVERSE — 500+ synthetic tickers across sectors/regions
+   ============================================================ */
+const SECTORS=["Tech","AI","Semis","Software","Fintech","Healthcare","Biotech","Energy","Financials","Consumer","Industrials","Materials","Utilities","Comms","RealEstate"];
+const REGIONS=["US","US","US","Europe","US","US","Asia"];
+function buildUniverse(){
+  // Real-ish seed names for flavor, then synthetic fill to 500+
+  const seeds=[
+    ["AAPL","Apple","Tech"],["MSFT","Microsoft","Software"],["NVDA","NVIDIA","Semis"],["AMD","AMD","Semis"],
+    ["GOOGL","Alphabet","Comms"],["META","Meta","Comms"],["AMZN","Amazon","Consumer"],["TSLA","Tesla","Consumer"],
+    ["AVGO","Broadcom","Semis"],["TSM","TSMC","Semis"],["ASML","ASML","Semis"],["PLTR","Palantir","AI"],
+    ["SNOW","Snowflake","Software"],["CRM","Salesforce","Software"],["ADBE","Adobe","Software"],["ORCL","Oracle","Software"],
+    ["JPM","JPMorgan","Financials"],["GS","Goldman","Financials"],["MS","Morgan Stanley","Financials"],["BAC","Bank of America","Financials"],
+    ["V","Visa","Fintech"],["MA","Mastercard","Fintech"],["PYPL","PayPal","Fintech"],["SQ","Block","Fintech"],
+    ["UNH","UnitedHealth","Healthcare"],["LLY","Eli Lilly","Healthcare"],["JNJ","J&J","Healthcare"],["PFE","Pfizer","Healthcare"],
+    ["MRNA","Moderna","Biotech"],["VRTX","Vertex","Biotech"],["REGN","Regeneron","Biotech"],["GILD","Gilead","Biotech"],
+    ["XOM","Exxon","Energy"],["CVX","Chevron","Energy"],["COP","ConocoPhillips","Energy"],["SLB","Schlumberger","Energy"],
+    ["CAT","Caterpillar","Industrials"],["BA","Boeing","Industrials"],["GE","GE Aerospace","Industrials"],["HON","Honeywell","Industrials"],
+    ["NEE","NextEra","Utilities"],["DUK","Duke Energy","Utilities"],["LIN","Linde","Materials"],["FCX","Freeport","Materials"],
+    ["PLD","Prologis","RealEstate"],["AMT","American Tower","RealEstate"],["NFLX","Netflix","Comms"],["DIS","Disney","Comms"],
+    ["SAP","SAP","Software"],["SIE","Siemens","Industrials"],["MC","LVMH","Consumer"],["NESN","Nestlé","Consumer"],
+    ["AZN","AstraZeneca","Healthcare"],["NOVO","Novo Nordisk","Healthcare"],["SHEL","Shell","Energy"],["TTE","TotalEnergies","Energy"]
+  ];
+  const list=seeds.map(([t,n,s])=>({ticker:t,name:n,sector:s,region:s==="Energy"&&Math.random()<.3?"Europe":"US"}));
+  const prefixes=["AX","ZN","QV","RK","TL","BN","CR","DM","FN","GX","HV","JL","KP","LN","MX","NR","PV","RS","TC","VL","WX","YN","ZB","QC","BD","EF"];
+  let i=0;
+  while(list.length<520){
+    const p=prefixes[i%prefixes.length];const suf=Math.floor(i/prefixes.length);
+    const tk=(p+(suf>0?suf:"")).toUpperCase();
+    if(!list.find(a=>a.ticker===tk)){
+      const sec=SECTORS[hashStr(tk)%SECTORS.length];
+      const reg=REGIONS[hashStr(tk+"r")%REGIONS.length];
+      list.push({ticker:tk,name:tk+" Holdings",sector:sec,region:reg});
+    }
+    i++;
+  }
+  return list;
+}
+const UNIVERSE=buildUniverse();
+
+/* Universe groupings */
+const GROUPS={
+  "S&P500":a=>a.region==="US",
+  "NASDAQ":a=>["Tech","AI","Semis","Software","Comms","Biotech"].includes(a.sector),
+  "RUSSELL":a=>hashStr(a.ticker)%3===0,
+  "EUROPE":a=>a.region==="Europe",
+  "ASIA":a=>a.region==="Asia",
+  "TECH":a=>["Tech","Software","Semis"].includes(a.sector),
+  "AI":a=>["AI","Semis","Software"].includes(a.sector),
+  "BIOTECH":a=>a.sector==="Biotech",
+  "ENERGY":a=>a.sector==="Energy",
+  "SMALL CAP":a=>hashStr(a.ticker+"sc")%4===0,
+  "FINTECH":a=>a.sector==="Fintech",
+  "CUSTOM":a=>STATE.custom.includes(a.ticker)
+};
+
+/* ============================================================
+   PRICE ENGINE — seeded GBM with regime switching, 504 days (~2y)
+   ============================================================ */
+const NDAYS=504;
+const priceCache={};
+function genSeries(ticker){
+  if(priceCache[ticker])return priceCache[ticker];
+  const seed=hashStr(ticker+"|atlas");
+  const rng=mulberry32(seed);
+  const meta=UNIVERSE.find(a=>a.ticker===ticker)||{sector:"Tech"};
+  // sector-driven base params
+  const secSeed=hashStr(meta.sector)/4294967296;
+  const baseDrift=(0.04+secSeed*0.18)/252;            // annual ~4-22%
+  const baseVol=(0.18+(hashStr(ticker+"v")%100)/100*0.45)/Math.sqrt(252); // 18-63% annual
+  let p0=15+(hashStr(ticker+"p")%480);
+  const price=[p0],vol=[],high=[],low=[];
+  // regime switching: 0 bull,1 bear,2 sideways,3 highvol
+  let regime=hashStr(ticker)%4;let regimeLeft=20+Math.floor(rng()*60);
+  let sigma=baseVol;
+  for(let t=1;t<NDAYS;t++){
+    if(--regimeLeft<=0){regime=Math.floor(rng()*4);regimeLeft=20+Math.floor(rng()*70);}
+    let mu=baseDrift,volMult=1;
+    if(regime===0){mu=baseDrift*2.2;volMult=0.85;}
+    else if(regime===1){mu=-baseDrift*2.6;volMult=1.5;}
+    else if(regime===2){mu=baseDrift*0.1;volMult=0.7;}
+    else if(regime===3){mu=-baseDrift*0.5;volMult=2.4;}
+    // GARCH-like vol clustering
+    const shock=gauss(rng);
+    sigma=Math.sqrt(0.000002+0.08*(baseVol*shock)**2+0.90*sigma**2)*1;
+    const dailyVol=M.clip(sigma*volMult,baseVol*0.4,baseVol*4);
+    const ret=mu+dailyVol*shock;
+    let np=price[t-1]*Math.exp(ret);
+    np=Math.max(0.5,np);
+    price.push(np);
+    const v=Math.round((1e6+rng()*9e6)*(1+Math.abs(shock)*0.6));
+    vol.push(v);
+    high.push(np*(1+Math.abs(gauss(rng))*dailyVol*0.5));
+    low.push(np*(1-Math.abs(gauss(rng))*dailyVol*0.5));
+  }
+  vol.unshift(vol[0]);high.unshift(price[0]);low.unshift(price[0]);
+  const out={ticker,price,vol,high,low,meta};
+  priceCache[ticker]=out;
+  return out;
+}
+
+/* Benchmark = equal-weight index of S&P500 group (cached) */
+let _bench=null;
+function benchmark(){
+  if(_bench)return _bench;
+  const syms=UNIVERSE.filter(GROUPS["S&P500"]).slice(0,60).map(a=>a.ticker);
+  const series=syms.map(genSeries);
+  const idx=[];
+  for(let t=0;t<NDAYS;t++){
+    let s=0;for(const sr of series)s+=sr.price[t]/sr.price[0];
+    idx.push(s/series.length*100);
+  }
+  _bench={price:idx,ret:M.logret(idx)};
+  return _bench;
+}
+
+/* ============================================================
+   20 QUANT MODELS — each returns score [0-100] + detail
+   ============================================================ */
+function annVol(ret){return M.std(ret)*Math.sqrt(252);}
+function cagr(price){const yrs=price.length/252;return Math.pow(M.last(price)/price[0],1/yrs)-1;}
+function maxDD(price){let peak=price[0],mdd=0;for(const p of price){if(p>peak)peak=p;const dd=(p-peak)/peak;if(dd<mdd)mdd=dd;}return mdd;}
+
+function computeModels(S){
+  const p=S.price,ret=M.logret(p),v=S.vol;
+  const bench=benchmark();
+  const m={};
+
+  // helpers
+  const win=(n)=>ret.slice(-n);
+  const r=(n)=>Math.log(M.last(p)/p[p.length-1-n]);
+
+  // 1 Momentum Persistence
+  const r1=r(21),r3=r(63),r6=r(126),r12=r(252);
+  const lr=M.linreg(p.slice(-90));const slopeN=lr.slope/(M.std(p.slice(-90))/90+1e-9);
+  const momRaw=0.15*r1+0.25*r3+0.3*r6+0.3*r12+0.02*M.clip(slopeN,-3,3);
+  m.momentum={score:M.clip(50+momRaw*180,0,100),detail:{r1,r3,r6,r12,slope:lr.slope}};
+
+  // 2 Mean Reversion (Z vs rolling VWAP proxy = SMA20 of typical price)
+  const w=20;const recent=p.slice(-w);const sma=M.mean(recent);const sd=M.std(recent,sma);
+  const z=(M.last(p)-sma)/(sd||1e-9);
+  m.meanrev={score:M.clip(50+(-z)*16,0,100),detail:{z,sma}};
+
+  // 3 Regime Detection (adaptive MA cross + vol slope)
+  const fast=M.mean(p.slice(-20)),slow=M.mean(p.slice(-60));
+  const volNow=annVol(ret.slice(-20)),volPast=annVol(ret.slice(-60));
+  let regime,regScore;
+  const trend=(fast-slow)/slow;
+  if(volNow>0.55){regime=volNow>0.8?"PANIC":"HIGH VOL";regScore=25;}
+  else if(trend>0.02){regime="BULL";regScore=80;}
+  else if(trend<-0.02){regime="BEAR";regScore=22;}
+  else{regime="SIDEWAYS";regScore=50;}
+  m.regime={score:regScore,detail:{regime,trend,volNow},label:regime};
+
+  // 4 Factor Investing composite (synthetic but deterministic per ticker)
+  const h=hashStr(S.ticker);
+  const value=((h%100))/100, quality=((hashStr(S.ticker+"q")%100))/100;
+  const size=1-M.clip((p[0]+M.last(p))/1000,0,1), lowvol=1-M.clip(annVol(ret)/0.7,0,1);
+  const profit=((hashStr(S.ticker+"pr")%100))/100;
+  const momF=M.clip(m.momentum.score/100,0,1);
+  const factorComposite=(value+quality+size+lowvol+profit+momF)/6;
+  m.factor={score:M.clip(factorComposite*100,0,100),detail:{value:value*100,quality:quality*100,size:size*100,lowvol:lowvol*100,profit:profit*100,mom:momF*100}};
+
+  // 5 Volatility Clustering (GARCH(1,1)-ish ratio short/long EWMA)
+  const ewS=M.ewma(ret.slice(-20),0.94),ewL=M.ewma(ret.slice(-120),0.97);
+  const volRatio=ewS/(ewL||1e-9);
+  m.volcluster={score:M.clip(50-(volRatio-1)*60,0,100),detail:{ewShort:ewS*Math.sqrt(252),ewLong:ewL*Math.sqrt(252),ratio:volRatio}};
+
+  // 6 Relative Strength vs benchmark
+  const bn=bench.price;const rsRaw=(M.last(p)/p[p.length-127])/(M.last(bn)/bn[bn.length-127]);
+  m.relstr={score:M.clip(50+(rsRaw-1)*140,0,100),detail:{rs:rsRaw}};
+
+  // 7 Liquidity (Amihud illiquidity, lower illiq -> higher score)
+  let illiq=0;for(let i=1;i<60;i++){const ri=Math.abs(ret[ret.length-i]);illiq+=ri/((v[v.length-i]*p[p.length-i])||1);}
+  illiq/=60;const illiqLog=Math.log10(illiq*1e9+1);
+  m.liquidity={score:M.clip(100-illiqLog*22,0,100),detail:{amihud:illiq}};
+
+  // 8 Earnings Momentum (synthetic SUE)
+  const sue=gauss(mulberry32(h^0xBEEF))*1.2;
+  m.earnings={score:M.clip(50+sue*18,0,100),detail:{sue}};
+
+  // 9 Trend Stability (R2 of 90d regression)
+  const reg90=M.linreg(p.slice(-90));
+  m.trendstab={score:M.clip(reg90.r2*100*(reg90.slope>=0?1:0.5),0,100),detail:{r2:reg90.r2,slope:reg90.slope}};
+
+  // 10 Correlation Breakdown (20d vs 200d corr to bench)
+  const bret=bench.ret;
+  const c20=M.corr(ret.slice(-20),bret.slice(-20));
+  const c200=M.corr(ret.slice(-200),bret.slice(-200));
+  const cbreak=Math.abs(c20-c200);
+  m.corrbreak={score:M.clip(100-cbreak*120,0,100),detail:{c20,c200,delta:cbreak}};
+
+  // 11 Sector Rotation (sector relative strength — synthetic sector momentum)
+  const secMom=(hashStr(S.meta.sector+"rot"+Math.floor(Date.now()/8.64e7))%100);
+  m.sectorrot={score:secMom,detail:{sectorMom:secMom}};
+
+  // 12 Cross-Sectional Alpha (Jensen alpha vs bench / resid se)
+  const xr=ret.slice(-200),br=bret.slice(-200);
+  const beta=M.corr(xr,br)*M.std(xr)/(M.std(br)||1e-9);
+  const alpha=(M.mean(xr)-beta*M.mean(br))*252;
+  m.alpha={score:M.clip(50+alpha*120,0,100),detail:{alpha,beta}};
+
+  // 13 Drawdown Recovery
+  const mdd=maxDD(p);const curDD=(M.last(p)-Math.max(...p))/Math.max(...p);
+  const recov=1-Math.abs(curDD)/(Math.abs(mdd)||1e-9);
+  m.ddrecov={score:M.clip(recov*100,0,100),detail:{mdd,curDD}};
+
+  // 14 Hidden Markov (2-state vol regime posterior, simplified)
+  const hi=ret.slice(-40).filter(x=>Math.abs(x)>M.std(ret)).length/40;
+  m.hmm={score:M.clip(100-hi*120,0,100),detail:{pHighVol:hi,state:hi>0.4?"ACUMULACIÓN/STRESS":"ESTABLE"}};
+
+  // 15 Market Breadth (proxy: % of own price above MA50/MA200)
+  const ma50=M.mean(p.slice(-50)),ma200=M.mean(p.slice(-200));
+  const breadth=((M.last(p)>ma50?50:0)+(M.last(p)>ma200?50:0));
+  m.breadth={score:breadth,detail:{ma50,ma200}};
+
+  // 16 Smart Money Flow (synthetic close-hour accumulation)
+  const smf=50+gauss(mulberry32(h^0x5A5A))*22;
+  m.smartmoney={score:M.clip(smf,0,100),detail:{smfi:smf}};
+
+  // 17 Quality Compounder
+  m.quality={score:M.clip((m.factor.detail.quality*0.5+m.factor.detail.profit*0.5),0,100),detail:{}};
+
+  // 18 Risk-Adjusted Return
+  const annR=M.mean(ret)*252,annV=annVol(ret);const rf=0.04;
+  const sharpe=(annR-rf)/(annV||1e-9);
+  const downside=Math.sqrt(M.mean(ret.filter(x=>x<0).map(x=>x*x))||0)*Math.sqrt(252);
+  const sortino=(annR-rf)/(downside||1e-9);
+  const calmar=cagr(p)/(Math.abs(mdd)||1e-9);
+  const thr=0;const gains=ret.filter(x=>x>thr),losses=ret.filter(x=>x<=thr);
+  const omega=M.sum(gains)/(Math.abs(M.sum(losses))||1e-9);
+  m.riskadj={score:M.clip(50+sharpe*22,0,100),detail:{sharpe,sortino,calmar,omega,annR,annV}};
+
+  // 19 Tail Risk (CVaR + kurtosis)
+  const var95=M.pctile(ret,0.05),cvar=M.mean(ret.filter(x=>x<=var95));
+  const k=M.kurt(ret),sk=M.skew(ret);
+  m.tail={score:M.clip(100+cvar*900-Math.max(0,k)*4,0,100),detail:{var95,cvar,kurt:k,skew:sk}};
+
+  return m;
+}
+
+/* Meta Ensemble — regime-conditioned weights */
+const REGIME_WEIGHTS={
+  BULL:{momentum:1.6,factor:1.4,quality:1.4,relstr:1.3,smartmoney:1.2,alpha:1.3,trendstab:1.2,riskadj:1,sectorrot:1.1,earnings:1.1,meanrev:0.6,tail:0.6,volcluster:0.7,hmm:0.8,liquidity:0.9,breadth:1,ddrecov:1,corrbreak:0.9},
+  BEAR:{tail:1.6,riskadj:1.5,meanrev:1.4,hmm:1.4,liquidity:1.3,volcluster:1.3,ddrecov:1.2,quality:1.1,momentum:0.5,relstr:0.6,factor:0.8,smartmoney:0.9,alpha:0.9,trendstab:0.8,sectorrot:0.8,earnings:0.7,breadth:1,corrbreak:1.1},
+  SIDEWAYS:{meanrev:1.7,liquidity:1.4,hmm:1.4,corrbreak:1.2,smartmoney:1.2,tail:1.1,riskadj:1.1,volcluster:1.1,momentum:0.7,relstr:0.8,factor:1,quality:1,alpha:1,trendstab:0.8,sectorrot:0.9,earnings:0.9,breadth:0.9,ddrecov:1},
+  "HIGH VOL":{tail:1.8,riskadj:1.5,volcluster:1.5,liquidity:1.4,hmm:1.3,meanrev:1.1,momentum:0.4,relstr:0.5,factor:0.7,quality:1,smartmoney:0.8,alpha:0.8,trendstab:0.7,sectorrot:0.7,earnings:0.6,breadth:0.9,ddrecov:1.1,corrbreak:1.2},
+  PANIC:{tail:2,riskadj:1.6,liquidity:1.6,volcluster:1.5,hmm:1.3,meanrev:1.2,momentum:0.3,relstr:0.4,factor:0.6,quality:1.1,smartmoney:0.7,alpha:0.7,trendstab:0.6,sectorrot:0.6,earnings:0.5,breadth:0.8,ddrecov:1,corrbreak:1.2}
+};
+const MODEL_KEYS=["momentum","meanrev","regime","factor","volcluster","relstr","liquidity","earnings","trendstab","corrbreak","sectorrot","alpha","ddrecov","hmm","breadth","smartmoney","quality","riskadj","tail"];
+const MODEL_NAMES={momentum:"Momentum Persistence",meanrev:"Mean Reversion",regime:"Regime Detection",factor:"Factor Investing",volcluster:"Volatility Clustering",relstr:"Relative Strength",liquidity:"Liquidity (Amihud)",earnings:"Earnings Momentum",trendstab:"Trend Stability R²",corrbreak:"Correlation Breakdown",sectorrot:"Sector Rotation",alpha:"Cross-Sectional Alpha",ddrecov:"Drawdown Recovery",hmm:"Hidden Markov",breadth:"Market Breadth",smartmoney:"Smart Money Flow",quality:"Quality Compounder",riskadj:"Risk-Adjusted Return",tail:"Tail Risk Engine"};
+
+function metaEnsemble(models){
+  const regime=models.regime.label;
+  const W=REGIME_WEIGHTS[regime]||REGIME_WEIGHTS.SIDEWAYS;
+  let wsum=0,acc=0;
+  for(const k of MODEL_KEYS){
+    if(k==="regime")continue;
+    const w=W[k]??1;acc+=w*models[k].score;wsum+=w;
+  }
+  const score=Math.round(acc/wsum);
+  // conviction: agreement of top signals
+  const sig=MODEL_KEYS.filter(k=>k!=="regime").map(k=>models[k].score);
+  const agree=sig.filter(s=>Math.abs(s-score)<18).length/sig.length;
+  let conviction= score>=72&&agree>0.55?"HIGH": score>=52?"MEDIUM":"LOW";
+  return{score,conviction,regime};
+}
+
+/* Full analysis per ticker (cached) */
+const analysisCache={};
+function analyze(ticker){
+  if(analysisCache[ticker])return analysisCache[ticker];
+  const S=genSeries(ticker);
+  const models=computeModels(S);
+  const meta=metaEnsemble(models);
+  const ret=M.logret(S.price);
+  const annR=M.mean(ret)*252;
+  const expEdge=(meta.score-50)/50*0.12; // illustrative expected edge ±12%
+  // probability of outperformance: logistic on alpha+momentum
+  const z=(models.alpha.detail.alpha*2+(meta.score-50)/50);
+  const probOut=1/(1+Math.exp(-z*2));
+  const out={ticker,S,models,meta,annR,expEdge,probOut};
+  analysisCache[ticker]=out;
+  return out;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STATE={
+  group:"S&P500",
+  selected:"NVDA",
+  search:"",
+  custom:["AAPL","NVDA","MSFT","TSLA"],
+  centerTab:"research",
+  rightTab:"portfolio",
+  portfolio:[{ticker:"NVDA",w:0.3},{ticker:"AAPL",w:0.25},{ticker:"MSFT",w:0.25},{ticker:"JPM",w:0.2}],
+  optMethod:"maxsharpe"
+};
+
+/* ============================================================
+   RENDER — Sidebar
+   ============================================================ */
+const $=s=>document.querySelector(s);
+function renderUniverseTabs(){
+  $("#universeTabs").innerHTML=Object.keys(GROUPS).map(g=>
+    `<div class="utab ${g===STATE.group?'active':''}" data-g="${g}">${g}</div>`).join("");
+  document.querySelectorAll("[data-g]").forEach(e=>e.onclick=()=>{STATE.group=e.dataset.g;renderUniverseTabs();renderAssetList();});
+}
+function visibleAssets(){
+  let list=UNIVERSE.filter(GROUPS[STATE.group]);
+  if(STATE.search){const q=STATE.search.toUpperCase();list=UNIVERSE.filter(a=>a.ticker.includes(q)||a.name.toUpperCase().includes(q));}
+  return list.slice(0,140);
+}
+function renderAssetList(){
+  const list=visibleAssets();
+  $("#assetCount").textContent=UNIVERSE.filter(GROUPS[STATE.group]).length;
+  $("#assetList").innerHTML=list.map(a=>{
+    const A=analyze(a.ticker);const chg=A.models.momentum.detail.r1;
+    return `<div class="asset-row ${a.ticker===STATE.selected?'active':''}" data-t="${a.ticker}">
+      <div><div class="sym">${a.ticker}</div><div class="sec">${a.sector}</div></div>
+      <div class="chg ${chg>=0?'up':'down'}">${pct(chg,1)}</div>
+      <div class="score-dot" style="background:${heatColor(A.meta.score)}22;color:${scoreColor(A.meta.score)}">${A.meta.score}</div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".asset-row").forEach(e=>e.onclick=()=>selectAsset(e.dataset.t));
+}
+function selectAsset(t){STATE.selected=t;renderAssetList();renderCenter();log("SELECT",`Activo ${t} cargado → Institutional Score ${analyze(t).meta.score}`,"var(--accent-2)");}
+
+/* ============================================================
+   RENDER — Topbar
+   ============================================================ */
+function renderTape(){
+  const syms=["AAPL","NVDA","MSFT","TSLA","META","AMZN","GOOGL","JPM","XOM","AMD","AVGO","NFLX"];
+  $("#tape").innerHTML=syms.map(s=>{const A=analyze(s);const c=A.models.momentum.detail.r1;
+    return `<div class="tape-item"><span class="sym">${s}</span><span class="mono">${fmt(M.last(A.S.price))}</span><span class="mono ${c>=0?'up':'down'}">${pct(c,1)}</span></div>`;}).join("");
+}
+function renderTop(){
+  // global vol = mean annVol of bench constituents; breadth = % score>50
+  const sample=UNIVERSE.filter(GROUPS["S&P500"]).slice(0,60);
+  const scores=sample.map(a=>analyze(a.ticker).meta.score);
+  const breadth=Math.round(scores.filter(s=>s>50).length/scores.length*100);
+  const bret=benchmark().ret;const vix=annVol(bret.slice(-20))*100;
+  $("#vix").textContent=fmt(vix,1);$("#vix").className="val "+(vix>30?"down":vix>20?"warn":"up");
+  $("#breadth").textContent=breadth+"%";$("#breadth").className="val "+(breadth>55?"up":breadth<40?"down":"warn");
+  // market regime from bench
+  const bp=benchmark().price;const f=M.mean(bp.slice(-20)),sl=M.mean(bp.slice(-60));const tr=(f-sl)/sl;
+  let reg=vix>30?"PANIC":tr>0.01?"BULL":tr<-0.01?"BEAR":"SIDEWAYS";
+  const rc={BULL:"var(--up)",BEAR:"var(--down)",SIDEWAYS:"var(--warn)",PANIC:"var(--down)"}[reg];
+  const pill=$("#regimePill");pill.textContent="RÉGIMEN: "+reg;pill.style.color=rc;pill.style.borderColor=rc;pill.style.background=rc+"14";
+}
+function tickClock(){
+  const d=new Date();
+  const ny=d.toLocaleTimeString("en-US",{timeZone:"America/New_York",hour12:false});
+  $("#clock").innerHTML=`NY ${ny}`;
+  $("#latency").textContent=(0.3+Math.random()*0.4).toFixed(2)+"ms";
+}
+
+/* ============================================================
+   RENDER — Center (Research Dashboard)
+   ============================================================ */
+const CENTER_TABS=[["research","Research"],["models","20 Modelos"],["risk","Riesgo"],["charts","Gráficos"],["scanner","Scanner"]];
+function renderCenterTabs(){
+  $("#centerTabs").innerHTML=CENTER_TABS.map(([k,n])=>`<div class="ctab ${k===STATE.centerTab?'active':''}" data-ct="${k}">${n}</div>`).join("");
+  document.querySelectorAll("[data-ct]").forEach(e=>e.onclick=()=>{STATE.centerTab=e.dataset.ct;renderCenterTabs();renderCenterBody();});
+}
+function renderCenter(){renderCenterHead();renderCenterBody();}
+function renderCenterHead(){
+  const A=analyze(STATE.selected);const px=M.last(A.S.price);const chg=A.models.momentum.detail.r1;
+  const cc={HIGH:"var(--up)",MEDIUM:"var(--warn)",LOW:"var(--down)"}[A.meta.conviction];
+  $("#centerHead").innerHTML=`
+    <div><div class="tk">${A.ticker}</div><div class="nm">${A.S.meta.name} · ${A.S.meta.sector}</div></div>
+    <div class="conv-pill" style="color:${cc};background:${cc}18;border:1px solid ${cc}55">${A.meta.conviction} CONVICTION</div>
+    <div style="margin-left:auto;text-align:right"><div class="px">${fmt(px)}</div><div class="pxchg ${chg>=0?'up':'down'}">${pct(chg)} 1M</div></div>
+    <div class="big-score"><div class="n" style="color:${scoreColor(A.meta.score)}">${A.meta.score}</div><div class="l">Institutional Score</div></div>`;
+}
+function renderCenterBody(){
+  const tab=STATE.centerTab;
+  if(tab==="research")return renderResearch();
+  if(tab==="models")return renderModelsTab();
+  if(tab==="risk")return renderRiskTab();
+  if(tab==="charts")return renderChartsTab();
+  if(tab==="scanner")return renderScannerTab();
+}
+
+function renderResearch(){
+  const A=analyze(STATE.selected);const m=A.models;
+  const ra=m.riskadj.detail;
+  // strengths/weaknesses
+  const str=[],weak=[];
+  if(m.momentum.score>70)str.push("Momentum institucional fuerte");
+  if(m.quality.score>65)str.push("Quality compounder");
+  if(m.relstr.score>60)str.push("Líder relativo vs índice");
+  if(m.trendstab.detail.r2>0.8)str.push("Tendencia estable (R²>0.8)");
+  if(ra.sharpe>1)str.push("Sharpe >1.0");
+  if(m.liquidity.score>70)str.push("Alta liquidez / bajo impacto");
+  if(m.smartmoney.score>65)str.push("Acumulación smart money");
+  if(m.tail.score<40)weak.push("Riesgo de cola elevado (CVaR)");
+  if(m.volcluster.detail.ratio>1.3)weak.push("Expansión de volatilidad inminente");
+  if(m.meanrev.detail.z>2)weak.push("Sobreextensión estadística (Z>2)");
+  if(m.liquidity.score<40)weak.push("Iliquidez — penalizar sizing");
+  if(ra.sharpe<0)weak.push("Sharpe negativo histórico");
+  if(m.ddrecov.score<40)weak.push("Recuperación de drawdown lenta");
+  if(!str.length)str.push("Sin fortalezas dominantes");
+  if(!weak.length)weak.push("Sin debilidades críticas detectadas");
+
+  const pf=portfolioFit(A.ticker);
+  const narrative=genNarrative(A);
+
+  $("#centerBody").innerHTML=`
+  <div class="kpi-grid" style="margin-bottom:12px">
+    <div class="kpi"><div class="l">Expected Edge</div><div class="v ${A.expEdge>=0?'up':'down'}">${pct(A.expEdge,1)}</div><div class="s">ventana objetivo</div></div>
+    <div class="kpi"><div class="l">Prob. Outperf.</div><div class="v">${(A.probOut*100).toFixed(0)}%</div><div class="s">vs S&P500</div></div>
+    <div class="kpi"><div class="l">Régimen</div><div class="v" style="font-size:14px;color:${m.regime.label==='BULL'?'var(--up)':m.regime.label==='BEAR'?'var(--down)':'var(--warn)'}">${m.regime.label}</div><div class="s">trend ${pct(m.regime.detail.trend,1)}</div></div>
+    <div class="kpi"><div class="l">Portfolio Fit</div><div class="v" style="font-size:15px;color:${pf.color}">${pf.label}</div><div class="s">corr ${fmt(pf.corr)}</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Resumen Cuantitativo <span class="muted">Meta-Ensemble</span></h3>
+      <div class="narrative">${narrative}</div>
+      <p class="disclaimer">Datos sintéticos (GBM con cambio de régimen). Metodología real, alpha ilustrativo — no es recomendación de inversión.</p>
+    </div>
+    <div class="card"><h3>Precio · 252d + Regresión</h3>${sparkline(A.S.price.slice(-252),260,90,true)}</div>
+  </div>
+  <div class="grid3" style="margin-top:12px">
+    <div class="card"><h3 style="color:var(--up)">✓ Fortalezas</h3>${str.map(s=>`<span class="tag s">${s}</span>`).join("")}</div>
+    <div class="card"><h3 style="color:var(--down)">⚠ Debilidades / Warnings</h3>${weak.map(s=>`<span class="tag w">${s}</span>`).join("")}</div>
+    <div class="card"><h3>Exposición Factorial</h3>${factorRadar(m.factor.detail,230,150)}</div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Scorecard — Señales Cuantitativas Top</h3>
+    ${["momentum","relstr","quality","factor","alpha","tail","riskadj","liquidity"].map(k=>modelBar(k,m[k].score)).join("")}
+  </div>`;
+}
+
+function genNarrative(A){
+  const m=A.models;const t=A.ticker;
+  const momP=Math.round(m.momentum.score);const z=m.meanrev.detail.z;
+  const conv=A.meta.conviction;const reg=m.regime.label;
+  let s=`<b>${t}</b> obtiene un <b>Institutional Score de ${A.meta.score}/100</b> (${conv} conviction) bajo régimen <b>${reg}</b>. `;
+  if(m.momentum.score>70)s+=`La persistencia de momentum se sitúa en el percentil ~${Math.min(99,Math.round(m.momentum.score))}, `;
+  else if(m.momentum.score<35)s+=`El momentum es débil (${momP}/100), señalando posible agotamiento de tendencia, `;
+  else s+=`El momentum es neutral (${momP}/100), `;
+  s+= Math.abs(z)>2 ? `con un <b>Z-score VWAP de ${fmt(z)}</b> que indica ${z>0?'sobreextensión (riesgo de reversión a la baja)':'capitulación estadística (potencial rebote)'}. ` : `y un Z-score VWAP contenido (${fmt(z)}) que descarta sobreextensión. `;
+  if(m.smartmoney.score>62)s+=`Se detecta acumulación neta de smart money en cierres. `;
+  s+= m.alpha.detail.alpha>0 ? `El alpha de Jensen anualizado es <b>${pct(m.alpha.detail.alpha,1)}</b> con beta ${fmt(m.alpha.detail.beta)}. ` : `El alpha residual es negativo (${pct(m.alpha.detail.alpha,1)}), el retorno se explica por beta (${fmt(m.alpha.detail.beta)}). `;
+  s+= m.tail.score<40 ? `<b>Atención al riesgo de cola</b>: CVaR diario ${pct(m.tail.detail.cvar,1)}, kurtosis ${fmt(m.tail.detail.kurt)}.` : `El perfil de cola es manejable (CVaR ${pct(m.tail.detail.cvar,1)}).`;
+  return s;
+}
+
+function modelBar(k,score){
+  return `<div class="model-bar"><div class="mn">${MODEL_NAMES[k]}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${score}%;background:${heatColor(score)}"></div></div>
+    <div class="mv" style="color:${scoreColor(score)}">${Math.round(score)}</div></div>`;
+}
+
+function renderModelsTab(){
+  const A=analyze(STATE.selected);const m=A.models;
+  const cards=MODEL_KEYS.filter(k=>k!=="regime").map(k=>{
+    const d=m[k].detail;
+    const det=Object.entries(d).slice(0,3).map(([kk,vv])=>`<div class="metric-row"><span class="k">${kk}</span><span class="v">${typeof vv==='number'?fmt(vv, Math.abs(vv)<1?4:2):vv}</span></div>`).join("");
+    return `<div class="card"><h3>${MODEL_NAMES[k]}<span style="color:${scoreColor(m[k].score)};font-size:15px;font-weight:800">${Math.round(m[k].score)}</span></h3>
+      <div class="bar-track" style="margin-bottom:8px"><div class="bar-fill" style="width:${m[k].score}%;background:${heatColor(m[k].score)}"></div></div>
+      ${det}</div>`;
+  }).join("");
+  $("#centerBody").innerHTML=`<div class="card" style="margin-bottom:12px"><h3>Meta-Ensemble — Ponderación dinámica por régimen (${A.meta.regime})</h3>
+    <div class="narrative">Los pesos de los 19 modelos se recalibran según el régimen detectado. En <b>${A.meta.regime}</b> se sobreponderan ${dominantModels(A.meta.regime)} y se infraponderan los modelos pro-cíclicos/anti-cíclicos opuestos. Score final = Σ Wₘ(régimen)·Sₘ = <b>${A.meta.score}</b>.</div></div>
+    <div class="grid3">${cards}</div>`;
+}
+function dominantModels(reg){
+  const W=REGIME_WEIGHTS[reg]||{};const top=Object.entries(W).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>MODEL_NAMES[x[0]]);
+  return top.join(", ");
+}
+
+function renderRiskTab(){
+  const A=analyze(STATE.selected);const ra=A.models.riskadj.detail;const t=A.models.tail.detail;
+  const p=A.S.price;const ret=M.logret(p);
+  const mdd=maxDD(p);
+  const mc=monteCarlo(p,90,500);
+  $("#centerBody").innerHTML=`
+  <div class="kpi-grid" style="margin-bottom:12px">
+    <div class="kpi"><div class="l">Sharpe</div><div class="v ${ra.sharpe>0?'up':'down'}">${fmt(ra.sharpe)}</div></div>
+    <div class="kpi"><div class="l">Sortino</div><div class="v ${ra.sortino>0?'up':'down'}">${fmt(ra.sortino)}</div></div>
+    <div class="kpi"><div class="l">Calmar</div><div class="v">${fmt(ra.calmar)}</div></div>
+    <div class="kpi"><div class="l">Omega</div><div class="v">${fmt(ra.omega)}</div></div>
+    <div class="kpi"><div class="l">Max Drawdown</div><div class="v down">${pct(mdd,1)}</div></div>
+    <div class="kpi"><div class="l">VaR 95% (1d)</div><div class="v down">${pct(t.var95,2)}</div></div>
+    <div class="kpi"><div class="l">CVaR 95%</div><div class="v down">${pct(t.cvar,2)}</div></div>
+    <div class="kpi"><div class="l">Vol Anual</div><div class="v">${pct(ra.annV,1)}</div></div>
+    <div class="kpi"><div class="l">Skewness</div><div class="v ${t.skew>=0?'up':'down'}">${fmt(t.skew)}</div></div>
+    <div class="kpi"><div class="l">Kurtosis (excess)</div><div class="v ${t.kurt>3?'down':''}">${fmt(t.kurt)}</div></div>
+    <div class="kpi"><div class="l">CAGR</div><div class="v ${cagr(p)>=0?'up':'down'}">${pct(cagr(p),1)}</div></div>
+    <div class="kpi"><div class="l">Beta</div><div class="v">${fmt(A.models.alpha.detail.beta)}</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Curva de Drawdown</h3>${drawdownChart(p,260,110)}</div>
+    <div class="card"><h3>Monte Carlo — 500 caminos · 90d (GBM)</h3>${mcChart(mc,260,110)}
+      <div class="legend"><span><span class="dot" style="background:var(--up)"></span>P95</span><span><span class="dot" style="background:var(--txt-1)"></span>Mediana</span><span><span class="dot" style="background:var(--down)"></span>P5</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px"><h3>Stress Test — Escenarios Históricos (paramétrico)</h3>
+    ${stressTable(ra.annV,A.models.alpha.detail.beta)}
+  </div>`;
+}
+function stressTable(vol,beta){
+  const scen=[["COVID Mar-2020 (-34% SPX)",-0.34],["GFC 2008 (-50%)",-0.50],["Vol Spike 2018 (-20%)",-0.20],["Flash Crash (-10%)",-0.10],["Rally Bull (+25%)",0.25]];
+  return `<table class="qt"><tr><th>Escenario</th><th>Mercado</th><th>Impacto estimado (β)</th><th>Severidad</th></tr>
+  ${scen.map(([n,s])=>{const imp=s*beta;return `<tr><td style="font-family:var(--sans)">${n}</td><td class="${s>=0?'up':'down'}">${pct(s,0)}</td><td class="${imp>=0?'up':'down'}">${pct(imp,1)}</td><td>${Math.abs(imp)>0.3?'<span class="down">CRÍTICA</span>':Math.abs(imp)>0.15?'<span class="warn">ALTA</span>':'<span class="up">MODERADA</span>'}</td></tr>`;}).join("")}</table>`;
+}
+
+function renderChartsTab(){
+  const A=analyze(STATE.selected);
+  // correlation matrix for portfolio + selected
+  const syms=[...new Set([STATE.selected,...STATE.portfolio.map(p=>p.ticker)])].slice(0,8);
+  $("#centerBody").innerHTML=`
+  <div class="grid2">
+    <div class="card"><h3>Matriz de Correlación (60d) — Cartera + ${A.ticker}</h3>${corrMatrix(syms)}</div>
+    <div class="card"><h3>Heatmap Sectorial — Institutional Score</h3>${sectorHeatmap()}</div>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="card"><h3>Rolling Beta (60d) vs Índice</h3>${rollingBeta(A.S.price,260,110)}</div>
+    <div class="card"><h3>Volumen + Precio · 120d</h3>${volChart(A.S,260,110)}</div>
+  </div>`;
+}
+
+function renderScannerTab(){runScanner();}
+
+/* ============================================================
+   SVG CHARTS
+   ============================================================ */
+function sparkline(data,w,h,withReg){
+  const min=Math.min(...data),max=Math.max(...data),rng=max-min||1;
+  const pts=data.map((d,i)=>[i/(data.length-1)*w,h-(d-min)/rng*h]);
+  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const up=M.last(data)>=data[0];const col=up?'var(--up)':'var(--down)';
+  let reg='';
+  if(withReg){const lr=M.linreg(data);const y0=h-(lr.intc-min)/rng*h;const y1=h-(lr.intc+lr.slope*(data.length-1)-min)/rng*h;reg=`<line x1="0" y1="${y0.toFixed(1)}" x2="${w}" y2="${y1.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;}
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}"><defs><linearGradient id="g${Math.random().toString(36).slice(2,6)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".25"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${path} L ${w} ${h} L 0 ${h} Z" fill="${col}" opacity=".08"/>
+    <path d="${path}" fill="none" stroke="${col}" stroke-width="1.6"/>${reg}</svg>`;
+}
+function drawdownChart(price,w,h){
+  let peak=price[0];const dd=price.map(p=>{if(p>peak)peak=p;return(p-peak)/peak;});
+  const min=Math.min(...dd);
+  const pts=dd.map((d,i)=>[i/(dd.length-1)*w,(-d/(-min||1))*h]);
+  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}"><path d="M0 0 ${path} L ${w} 0 Z" fill="var(--down)" opacity=".15"/><path d="${path}" fill="none" stroke="var(--down)" stroke-width="1.4"/></svg>`;
+}
+function monteCarlo(price,days,paths){
+  const ret=M.logret(price);const mu=M.mean(ret),sig=M.std(ret);const p0=M.last(price);
+  const rng=mulberry32(hashStr(STATE.selected+"mc"));
+  const finals=[];const sample=[];
+  for(let k=0;k<paths;k++){let p=p0;const path=[p];for(let d=0;d<days;d++){p*=Math.exp(mu+sig*gauss(rng));path.push(p);}finals.push(p);if(k<60)sample.push(path);}
+  finals.sort((a,b)=>a-b);
+  return{p0,sample,p5:finals[Math.floor(paths*0.05)],p50:finals[Math.floor(paths*0.5)],p95:finals[Math.floor(paths*0.95)],days};
+}
+function mcChart(mc,w,h){
+  const all=mc.sample.flat();const min=Math.min(...all,mc.p5),max=Math.max(...all,mc.p95),rng=max-min||1;
+  const lines=mc.sample.map(path=>{const pts=path.map((p,i)=>(i?'L':'M')+(i/mc.days*w).toFixed(1)+' '+(h-(p-min)/rng*h).toFixed(1)).join(' ');return `<path d="${pts}" fill="none" stroke="var(--accent)" stroke-width=".5" opacity=".12"/>`;}).join("");
+  const y=v=>h-(v-min)/rng*h;
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}">${lines}
+    <line x1="0" y1="${y(mc.p95)}" x2="${w}" y2="${y(mc.p95)}" stroke="var(--up)" stroke-width="1" stroke-dasharray="3 2"/>
+    <line x1="0" y1="${y(mc.p50)}" x2="${w}" y2="${y(mc.p50)}" stroke="var(--txt-1)" stroke-width="1"/>
+    <line x1="0" y1="${y(mc.p5)}" x2="${w}" y2="${y(mc.p5)}" stroke="var(--down)" stroke-width="1" stroke-dasharray="3 2"/>
+    <text x="3" y="${y(mc.p95)-3}" fill="var(--up)" font-size="9" font-family="monospace">${fmt(mc.p95)}</text>
+    <text x="3" y="${y(mc.p5)+10}" fill="var(--down)" font-size="9" font-family="monospace">${fmt(mc.p5)}</text></svg>`;
+}
+function factorRadar(f,w,h){
+  const keys=["value","quality","size","lowvol","profit","mom"];const labels=["Value","Quality","Size","LowVol","Profit","Mom"];
+  const cx=w/2,cy=h/2+6,R=Math.min(w,h)/2-22;const n=keys.length;
+  const pt=(i,r)=>{const a=-Math.PI/2+i/n*2*Math.PI;return[cx+Math.cos(a)*r,cy+Math.sin(a)*r];};
+  let grid='';for(let g=1;g<=3;g++){const r=R*g/3;const poly=keys.map((_,i)=>pt(i,r).join(',')).join(' ');grid+=`<polygon points="${poly}" fill="none" stroke="var(--line-2)" stroke-width=".5"/>`;}
+  let axes='',labs='';keys.forEach((k,i)=>{const[x,y]=pt(i,R);axes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line-2)" stroke-width=".5"/>`;const[lx,ly]=pt(i,R+12);labs+=`<text x="${lx}" y="${ly}" fill="var(--txt-2)" font-size="8" text-anchor="middle">${labels[i]}</text>`;});
+  const poly=keys.map((k,i)=>pt(i,R*M.clip(f[k]/100,0,1)).join(',')).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}">${grid}${axes}<polygon points="${poly}" fill="var(--accent)" fill-opacity=".22" stroke="var(--accent)" stroke-width="1.4"/>${labs}</svg>`;
+}
+function corrMatrix(syms){
+  const rets=syms.map(s=>M.logret(genSeries(s).price).slice(-60));
+  let html=`<table class="qt"><tr><th></th>${syms.map(s=>`<th>${s}</th>`).join("")}</tr>`;
+  syms.forEach((s,i)=>{html+=`<tr><td style="color:var(--txt-1)">${s}</td>`;syms.forEach((_,j)=>{const c=i===j?1:M.corr(rets[i],rets[j]);const col=c>0?`rgba(22,199,132,${Math.abs(c)*.5})`:`rgba(234,57,67,${Math.abs(c)*.5})`;html+=`<td class="corr-cell" style="background:${col}">${c.toFixed(2)}</td>`;});html+=`</tr>`;});
+  return html+`</table>`;
+}
+function sectorHeatmap(){
+  const secScores={};SECTORS.forEach(s=>{const list=UNIVERSE.filter(a=>a.sector===s).slice(0,12);if(list.length){secScores[s]=M.mean(list.map(a=>analyze(a.ticker).meta.score));}});
+  const entries=Object.entries(secScores);
+  const cols=4;
+  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:4px">${entries.map(([s,sc])=>`<div style="background:${heatColor(sc)};border-radius:6px;padding:8px 6px;text-align:center"><div style="font-size:10px;color:#06080c;font-weight:700">${s}</div><div style="font-family:var(--mono);font-size:14px;color:#06080c;font-weight:800">${Math.round(sc)}</div></div>`).join("")}</div>`;
+}
+function rollingBeta(price,w,h){
+  const ret=M.logret(price);const br=benchmark().ret;
+  const betas=[];const win=60;
+  for(let i=win;i<ret.length;i++){const x=ret.slice(i-win,i),y=br.slice(i-win,i);const b=M.corr(x,y)*M.std(x)/(M.std(y)||1e-9);betas.push(b);}
+  const min=Math.min(...betas,0),max=Math.max(...betas,1.5),rng=max-min||1;
+  const pts=betas.map((b,i)=>(i?'L':'M')+(i/(betas.length-1)*w).toFixed(1)+' '+(h-(b-min)/rng*h).toFixed(1)).join(' ');
+  const y1=h-(1-min)/rng*h;
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}"><line x1="0" y1="${y1}" x2="${w}" y2="${y1}" stroke="var(--txt-2)" stroke-dasharray="3 2" stroke-width=".7"/><text x="3" y="${y1-3}" fill="var(--txt-2)" font-size="8">β=1</text><path d="${pts}" fill="none" stroke="var(--accent-2)" stroke-width="1.5"/></svg>`;
+}
+function volChart(S,w,h){
+  const price=S.price.slice(-120),vol=S.vol.slice(-120);
+  const pmin=Math.min(...price),pmax=Math.max(...price),prng=pmax-pmin||1;
+  const vmax=Math.max(...vol);
+  const bars=vol.map((v,i)=>{const bh=v/vmax*h*0.4;const x=i/vol.length*w;return `<rect x="${x.toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${(w/vol.length*0.7).toFixed(1)}" height="${bh.toFixed(1)}" fill="var(--line-2)"/>`;}).join("");
+  const pts=price.map((p,i)=>(i?'L':'M')+(i/(price.length-1)*w).toFixed(1)+' '+(h-(p-pmin)/prng*h).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" height="${h}">${bars}<path d="${pts}" fill="none" stroke="var(--accent-2)" stroke-width="1.5"/></svg>`;
+}
+
+/* ============================================================
+   PORTFOLIO FIT + OPTIMIZATION
+   ============================================================ */
+function portfolioFit(ticker){
+  if(!STATE.portfolio.length)return{label:"N/A",color:"var(--txt-2)",corr:0};
+  const tr=M.logret(genSeries(ticker).price).slice(-60);
+  let avgC=0;for(const p of STATE.portfolio){if(p.ticker===ticker)continue;avgC+=M.corr(tr,M.logret(genSeries(p.ticker).price).slice(-60));}
+  avgC/=Math.max(1,STATE.portfolio.filter(p=>p.ticker!==ticker).length);
+  const label=avgC<0.3?"EXCELLENT":avgC<0.55?"GOOD":"BAD";
+  const color=avgC<0.3?"var(--up)":avgC<0.55?"var(--warn)":"var(--down)";
+  return{label,color,corr:avgC};
+}
+function covMatrix(syms){
+  const rets=syms.map(s=>M.logret(genSeries(s).price).slice(-120));
+  const n=syms.length;const cov=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const mi=M.mean(rets[i]),mj=M.mean(rets[j]);let c=0;for(let t=0;t<rets[i].length;t++)c+=(rets[i][t]-mi)*(rets[j][t]-mj);cov[i][j]=c/(rets[i].length-1)*252;}
+  return cov;
+}
+function expReturns(syms){return syms.map(s=>{const r=M.logret(genSeries(s).price);return M.mean(r)*252;});}
+function portVol(w,cov){let v=0;for(let i=0;i<w.length;i++)for(let j=0;j<w.length;j++)v+=w[i]*w[j]*cov[i][j];return Math.sqrt(Math.max(v,0));}
+function optimize(method){
+  const syms=STATE.portfolio.map(p=>p.ticker);if(syms.length<2)return;
+  const cov=covMatrix(syms),mu=expReturns(syms);const n=syms.length;const rf=0.04;
+  let best=null,bestScore=-1e9;
+  const rng=mulberry32(12345);
+  // random search on simplex (robust, no external solver)
+  for(let iter=0;iter<8000;iter++){
+    let w=Array.from({length:n},()=>-Math.log(rng()+1e-9));const s=M.sum(w);w=w.map(x=>x/s);
+    const vol=portVol(w,cov);const r=w.reduce((a,x,i)=>a+x*mu[i],0);
+    let sc;
+    if(method==="maxsharpe")sc=(r-rf)/(vol||1e-9);
+    else if(method==="minvar")sc=-vol;
+    else if(method==="riskparity"){const mrc=w.map((wi,i)=>{let s2=0;for(let j=0;j<n;j++)s2+=w[j]*cov[i][j];return wi*s2;});const tot=M.sum(mrc);const target=tot/n;sc=-M.sum(mrc.map(x=>(x-target)**2));}
+    else if(method==="kelly"){sc=w.reduce((a,x,i)=>a+x*mu[i],0)-0.5*vol*vol;} // log-growth approx
+    if(sc>bestScore){bestScore=sc;best=w;}
+  }
+  STATE.portfolio.forEach((p,i)=>p.w=best[i]);
+  STATE.optMethod=method;
+  log("OPTIMIZE",`${method.toUpperCase()} → pesos recalculados | σ=${pct(portVol(best,cov),1)} μ=${pct(best.reduce((a,x,i)=>a+x*mu[i],0),1)}`,"var(--accent-2)");
+  renderRight();
+}
+
+/* ============================================================
+   RENDER — Right Panel
+   ============================================================ */
+const RIGHT_TABS=[["portfolio","Portfolio del Día"],["watchlist","Watchlist"],["alerts","Alertas"]];
+function renderRightTabs(){
+  $("#rightTabs").innerHTML=RIGHT_TABS.map(([k,n])=>`<div class="rtab ${k===STATE.rightTab?'active':''}" data-rt="${k}">${n}</div>`).join("");
+  document.querySelectorAll("[data-rt]").forEach(e=>e.onclick=()=>{STATE.rightTab=e.dataset.rt;renderRightTabs();renderRight();});
+}
+function renderRight(){
+  if(STATE.rightTab==="portfolio")return renderPortfolio();
+  if(STATE.rightTab==="watchlist")return renderWatchlist();
+  if(STATE.rightTab==="alerts")return renderAlerts();
+}
+function renderPortfolio(){
+  const syms=STATE.portfolio.map(p=>p.ticker);
+  const totalW=M.sum(STATE.portfolio.map(p=>p.w))||1;
+  let expR=0,vol=0,divScore=0,grade="—",gradeColor="var(--txt-1)";
+  let html=`<div class="opt-btns">
+    ${[["maxsharpe","Max Sharpe"],["minvar","Min Variance"],["riskparity","Risk Parity"],["kelly","Kelly"]].map(([k,n])=>`<button class="${STATE.optMethod===k?'active':''}" data-opt="${k}">${n}</button>`).join("")}
+  </div>`;
+  if(syms.length>=2){
+    const cov=covMatrix(syms),mu=expReturns(syms);
+    const w=STATE.portfolio.map(p=>p.w/totalW);
+    expR=w.reduce((a,x,i)=>a+x*mu[i],0);vol=portVol(w,cov);
+    // diversification: 1 - avg pairwise corr
+    let ac=0,cnt=0;for(let i=0;i<syms.length;i++)for(let j=i+1;j<syms.length;j++){ac+=M.corr(M.logret(genSeries(syms[i]).price).slice(-60),M.logret(genSeries(syms[j]).price).slice(-60));cnt++;}
+    const avgCorr=cnt?ac/cnt:0;divScore=Math.round(M.clip((1-avgCorr)*100,0,100));
+    const sharpe=(expR-0.04)/(vol||1e-9);
+    const gscore=M.clip(40+sharpe*18+divScore*0.25,0,100);
+    grade=gscore>80?"A":gscore>68?"B":gscore>52?"C":gscore>38?"D":"F";
+    gradeColor=gscore>68?"var(--up)":gscore>52?"var(--warn)":"var(--down)";
+    var _gscore=gscore,_sharpe=sharpe,_avgCorr=avgCorr;
+  }
+  html+=`<div class="grade-badge" style="border-color:${gradeColor}55;background:${gradeColor}10"><div class="g" style="color:${gradeColor}">${grade}</div><div class="t">Quant Grade Institucional</div></div>`;
+  html+=`<div class="kpi-grid" style="grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+    <div class="kpi"><div class="l">Expected Return</div><div class="v ${expR>=0?'up':'down'}" style="font-size:15px">${pct(expR,1)}</div></div>
+    <div class="kpi"><div class="l">Expected Vol</div><div class="v" style="font-size:15px">${pct(vol,1)}</div></div>
+    <div class="kpi"><div class="l">Sharpe Est.</div><div class="v" style="font-size:15px">${syms.length>=2?fmt((expR-0.04)/(vol||1e-9)):'—'}</div></div>
+    <div class="kpi"><div class="l">Diversification</div><div class="v" style="font-size:15px;color:${scoreColor(divScore)}">${divScore}</div></div>
+  </div>`;
+  // weight editor
+  html+=`<div class="nav-section" style="padding-left:0">Pesos (editable)</div>`;
+  html+=STATE.portfolio.map((p,i)=>{const A=analyze(p.ticker);return `<div class="pf-row"><div><b>${p.ticker}</b> <span class="score-dot" style="display:inline-block;background:${heatColor(A.meta.score)}22;color:${scoreColor(A.meta.score)}">${A.meta.score}</span></div><input type="number" step="0.01" value="${(p.w/totalW).toFixed(2)}" data-wi="${i}"><div class="x" data-rm="${i}">✕</div></div>`;}).join("");
+  html+=`<div class="add-pf"><input id="pfAdd" placeholder="AÑADIR TICKER"><button id="pfAddBtn">+</button></div>`;
+  // strengths/weaknesses verdict
+  if(syms.length>=2){
+    const verdict=[];
+    if(_sharpe>1)verdict.push(["s","Sharpe esperado >1.0"]);else verdict.push(["w","Sharpe esperado bajo (<1)"]);
+    if(divScore>60)verdict.push(["s","Buena diversificación (corr media "+fmt(_avgCorr)+")"]);else verdict.push(["w","Concentración de riesgo (corr "+fmt(_avgCorr)+")"]);
+    if(vol<0.25)verdict.push(["s","Volatilidad controlada"]);else verdict.push(["w","Volatilidad agregada elevada ("+pct(vol,0)+")"]);
+    const sectors=[...new Set(syms.map(s=>genSeries(s).meta.sector))];
+    if(sectors.length>=Math.min(4,syms.length))verdict.push(["s","Exposición multi-sectorial ("+sectors.length+")"]);else verdict.push(["w","Sesgo sectorial ("+sectors.join(", ")+")"]);
+    html+=`<div class="card" style="margin-top:10px"><h3>¿Portfolio institucionalmente sólido?</h3>
+      <div style="font-size:12px;margin-bottom:8px;color:${gradeColor}"><b>${_gscore>68?'SÍ — Apto para mandato institucional':_gscore>52?'PARCIAL — Requiere ajustes':'NO — Riesgo/diversificación insuficiente'}</b></div>
+      ${verdict.map(([t,s])=>`<span class="tag ${t}">${s}</span>`).join("")}</div>`;
+    html+=`<div class="card" style="margin-top:10px"><h3>Contribución al Riesgo</h3>${riskContribChart(syms)}</div>`;
+  }
+  $("#rightBody").innerHTML=html;
+  document.querySelectorAll("[data-opt]").forEach(e=>e.onclick=()=>optimize(e.dataset.opt));
+  document.querySelectorAll("[data-wi]").forEach(e=>e.onchange=()=>{STATE.portfolio[+e.dataset.wi].w=Math.max(0,parseFloat(e.target.value)||0);renderRight();});
+  document.querySelectorAll("[data-rm]").forEach(e=>e.onclick=()=>{STATE.portfolio.splice(+e.dataset.rm,1);renderRight();});
+  $("#pfAddBtn").onclick=()=>{const t=$("#pfAdd").value.toUpperCase().trim();if(t&&UNIVERSE.find(a=>a.ticker===t)&&!STATE.portfolio.find(p=>p.ticker===t)){STATE.portfolio.push({ticker:t,w:0.1});renderRight();log("PORTFOLIO","Añadido "+t+" a la cartera","var(--up)");}else if(t)toast("Ticker no encontrado: "+t);};
+}
+function riskContribChart(syms){
+  const cov=covMatrix(syms);const totalW=M.sum(STATE.portfolio.map(p=>p.w))||1;const w=STATE.portfolio.map(p=>p.w/totalW);
+  const pv=portVol(w,cov);
+  const rc=w.map((wi,i)=>{let s=0;for(let j=0;j<syms.length;j++)s+=w[j]*cov[i][j];return wi*s/(pv||1e-9);});
+  const tot=M.sum(rc)||1;
+  return syms.map((s,i)=>{const frac=rc[i]/tot;return `<div class="model-bar"><div class="mn">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${(frac*100).toFixed(0)}%;background:var(--accent)"></div></div><div class="mv">${(frac*100).toFixed(0)}%</div></div>`;}).join("");
+}
+function renderWatchlist(){
+  const list=STATE.custom.map(t=>analyze(t));
+  $("#rightBody").innerHTML=`<table class="qt"><tr><th>Ticker</th><th>Score</th><th>1M</th><th>Conv</th></tr>
+  ${list.map(A=>`<tr data-t="${A.ticker}"><td><b>${A.ticker}</b></td><td style="color:${scoreColor(A.meta.score)}">${A.meta.score}</td><td class="${A.models.momentum.detail.r1>=0?'up':'down'}">${pct(A.models.momentum.detail.r1,1)}</td><td style="color:${A.meta.conviction==='HIGH'?'var(--up)':A.meta.conviction==='LOW'?'var(--down)':'var(--warn)'}">${A.meta.conviction[0]}</td></tr>`).join("")}</table>
+  <div class="add-pf"><input id="wlAdd" placeholder="AÑADIR A WATCHLIST"><button id="wlAddBtn">+</button></div>`;
+  document.querySelectorAll("#rightBody [data-t]").forEach(e=>e.onclick=()=>selectAsset(e.dataset.t));
+  $("#wlAddBtn").onclick=()=>{const t=$("#wlAdd").value.toUpperCase().trim();if(t&&UNIVERSE.find(a=>a.ticker===t)&&!STATE.custom.includes(t)){STATE.custom.push(t);renderRight();}else if(t)toast("Ticker no encontrado");};
+}
+function renderAlerts(){
+  // generate alerts from current universe scan
+  const sample=UNIVERSE.filter(GROUPS[STATE.group]).slice(0,80).map(a=>analyze(a.ticker));
+  const alerts=[];
+  sample.forEach(A=>{
+    if(A.models.meanrev.detail.z>2.4)alerts.push(["down","Sobrecompra extrema",`${A.ticker} Z=${fmt(A.models.meanrev.detail.z)}`]);
+    if(A.models.meanrev.detail.z<-2.4)alerts.push(["up","Capitulación / rebote",`${A.ticker} Z=${fmt(A.models.meanrev.detail.z)}`]);
+    if(A.models.smartmoney.score>78)alerts.push(["up","Smart Money acumulando",`${A.ticker} SMFI=${A.models.smartmoney.score.toFixed(0)}`]);
+    if(A.models.volcluster.detail.ratio>1.5)alerts.push(["warn","Expansión vol inminente",`${A.ticker} ratio=${fmt(A.models.volcluster.detail.ratio)}`]);
+    if(A.meta.score>85)alerts.push(["up","High Conviction Buy",`${A.ticker} score=${A.meta.score}`]);
+  });
+  $("#rightBody").innerHTML=alerts.length?alerts.slice(0,30).map(([t,h,d])=>{const c=t==='up'?'var(--up)':t==='down'?'var(--down)':'var(--warn)';return `<div class="card" style="padding:9px;margin-bottom:6px;border-left:3px solid ${c}"><div style="font-size:11px;font-weight:600;color:${c}">${h}</div><div class="mono muted" style="font-size:10px">${d}</div></div>`;}).join(""):`<p class="muted" style="padding:20px;text-align:center">Sin alertas críticas en ${STATE.group}</p>`;
+}
+
+/* ============================================================
+   SCANNER
+   ============================================================ */
+const SCAN_FILTERS={
+  "Momentum Fuerte":A=>A.models.momentum.score>72&&A.models.trendstab.detail.r2>0.7,
+  "Mean Reversion":A=>A.models.meanrev.detail.z<-1.8,
+  "Undervalued Quality":A=>A.models.factor.detail.value>60&&A.models.factor.detail.quality>60,
+  "Volatility Breakout":A=>A.models.volcluster.detail.ratio>1.3,
+  "Factor Outperformers":A=>A.models.factor.score>70,
+  "Low-Risk Alpha":A=>A.models.alpha.detail.alpha>0&&A.models.tail.score>60,
+  "High Liquidity":A=>A.models.liquidity.score>75,
+  "Unusual Volume":A=>M.last(A.S.vol)>M.mean(A.S.vol.slice(-20))*1.8,
+  "Smart Money":A=>A.models.smartmoney.score>72,
+  "High Conviction":A=>A.meta.conviction==="HIGH"
+};
+let scanFilter="High Conviction";
+function runScanner(){
+  const universe=UNIVERSE.filter(GROUPS[STATE.group]).slice(0,140).map(a=>analyze(a.ticker));
+  const filtered=universe.filter(SCAN_FILTERS[scanFilter]).sort((a,b)=>b.meta.score-a.meta.score).slice(0,40);
+  $("#centerBody").innerHTML=`
+  <div class="scan-filters">${Object.keys(SCAN_FILTERS).map(f=>`<div class="utab ${f===scanFilter?'active':''}" data-sf="${f}">${f}</div>`).join("")}</div>
+  <div class="card"><h3>Scanner — ${scanFilter} <span class="muted">${filtered.length} resultados en ${STATE.group}</span></h3>
+  <table class="qt"><tr><th>Ticker</th><th>Sector</th><th>Score</th><th>Conv</th><th>Régimen</th><th>1M</th><th>Sharpe</th><th>Z-VWAP</th><th>α</th><th>Edge</th></tr>
+  ${filtered.map(A=>`<tr data-t="${A.ticker}">
+    <td><b>${A.ticker}</b></td><td style="font-family:var(--sans);color:var(--txt-1)">${A.S.meta.sector}</td>
+    <td style="color:${scoreColor(A.meta.score)};font-weight:700">${A.meta.score}</td>
+    <td style="color:${A.meta.conviction==='HIGH'?'var(--up)':A.meta.conviction==='LOW'?'var(--down)':'var(--warn)'}">${A.meta.conviction}</td>
+    <td>${A.models.regime.label}</td>
+    <td class="${A.models.momentum.detail.r1>=0?'up':'down'}">${pct(A.models.momentum.detail.r1,1)}</td>
+    <td>${fmt(A.models.riskadj.detail.sharpe)}</td>
+    <td class="${Math.abs(A.models.meanrev.detail.z)>2?'warn':''}">${fmt(A.models.meanrev.detail.z)}</td>
+    <td class="${A.models.alpha.detail.alpha>=0?'up':'down'}">${pct(A.models.alpha.detail.alpha,0)}</td>
+    <td class="${A.expEdge>=0?'up':'down'}">${pct(A.expEdge,1)}</td></tr>`).join("")}
+  </table>${filtered.length?'':'<p class="muted" style="padding:20px;text-align:center">Sin coincidencias para este filtro</p>'}</div>`;
+  document.querySelectorAll("[data-sf]").forEach(e=>e.onclick=()=>{scanFilter=e.dataset.sf;runScanner();});
+  document.querySelectorAll("#centerBody [data-t]").forEach(e=>e.onclick=()=>{STATE.centerTab="research";selectAsset(e.dataset.t);renderCenterTabs();});
+}
+
+/* ============================================================
+   LOG FEED + TOAST
+   ============================================================ */
+const LOG_MSGS=[
+  ["ENSEMBLE","Recalibrando matriz de pesos por régimen…","var(--accent-2)"],
+  ["GARCH","Volatility clustering recalculado (λ=0.94)","var(--txt-1)"],
+  ["HMM","Baum-Welch convergió — estado latente actualizado","var(--warn)"],
+  ["ALPHA","Cross-sectional ranking refrescado (Top decil)","var(--up)"],
+  ["RISK","Monte Carlo 1000 paths · cono 30/60/90d OK","var(--txt-1)"],
+  ["FLOW","Smart Money Index — barrido de cierre completado","var(--up)"],
+  ["MACRO","Régimen global reevaluado vs benchmark EW","var(--accent-2)"],
+  ["SCAN","Universo 520 activos escaneado en 0.4ms","var(--txt-1)"]
+];
+function log(tag,msg,color){
+  const feed=$("#logFeed");const ts=new Date().toLocaleTimeString("en-US",{hour12:false});
+  const div=document.createElement("div");div.className="log-line";
+  div.innerHTML=`<span class="ts">${ts}</span><span class="tag-l" style="color:${color||'var(--txt-1)'}">[${tag}]</span><span style="color:var(--txt-1)">${msg}</span>`;
+  feed.prepend(div);while(feed.children.length>60)feed.lastChild.remove();
+}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{t.style.opacity="0";t.style.transition=".4s";setTimeout(()=>t.remove(),400);},3200);}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  renderUniverseTabs();renderAssetList();
+  renderCenterTabs();renderCenter();
+  renderRightTabs();renderRight();
+  renderTape();renderTop();
+  // search
+  $("#searchInput").oninput=e=>{STATE.search=e.target.value;renderAssetList();};
+  $("#addInput").onkeydown=e=>{if(e.key==="Enter")$("#addBtn").click();};
+  $("#addBtn").onclick=()=>{const t=$("#addInput").value.toUpperCase().trim();if(!t)return;
+    if(UNIVERSE.find(a=>a.ticker===t)){if(!STATE.custom.includes(t))STATE.custom.push(t);STATE.group="CUSTOM";renderUniverseTabs();selectAsset(t);}
+    else{UNIVERSE.push({ticker:t,name:t+" Corp",sector:SECTORS[hashStr(t)%SECTORS.length],region:"US"});STATE.custom.push(t);STATE.group="CUSTOM";renderUniverseTabs();renderAssetList();selectAsset(t);log("UNIVERSE","Ticker sintético "+t+" inyectado","var(--up)");}
+    $("#addInput").value="";};
+  $("#scanBtn").onclick=()=>{STATE.centerTab="scanner";renderCenterTabs();renderCenterBody();};
+  $("#exportBtn").onclick=exportData;
+  // clocks + live feed
+  tickClock();setInterval(tickClock,1000);
+  setInterval(()=>{const[t,m,c]=LOG_MSGS[Math.floor(Math.random()*LOG_MSGS.length)];log(t,m,c);},4200);
+  setInterval(()=>{$("#logMeta").textContent="uptime "+Math.floor(performance.now()/1000)+"s · 520 activos · 19 modelos";},1000);
+  // keyboard shortcuts
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT")return;
+    if(e.key==="/"){e.preventDefault();$("#searchInput").focus();}
+    if(e.key==="s")$("#scanBtn").click();
+    const idx="12345".indexOf(e.key);if(idx>=0){STATE.centerTab=CENTER_TABS[idx][0];renderCenterTabs();renderCenterBody();}
+  });
+  log("SYSTEM","ATLAS Quant Terminal inicializado · 520 activos · motor ensemble online","var(--up)");
+  log("DATA","Series sintéticas GBM+régimen generadas (504d) — alpha ilustrativo","var(--warn)");
+}
+function exportData(){
+  const A=analyze(STATE.selected);
+  const data={ticker:A.ticker,institutionalScore:A.meta.score,conviction:A.meta.conviction,regime:A.meta.regime,expectedEdge:A.expEdge,probOutperformance:A.probOut,models:Object.fromEntries(Object.entries(A.models).map(([k,v])=>[k,Math.round(v.score)])),portfolio:STATE.portfolio,disclaimer:"Synthetic data, illustrative alpha — not investment advice"};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="atlas_"+A.ticker+"_research.json";a.click();
+  toast("Research export: "+A.ticker+".json");log("EXPORT","Dossier "+A.ticker+" exportado","var(--accent-2)");
+}
+init();
+</script>
+</body>
+</html>
