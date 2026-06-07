@@ -214,6 +214,7 @@ table.qt tr:hover td{background:var(--bg-2);cursor:pointer}
     <div id="assetList"></div>
     <div class="sidebar-foot">
       <button id="scanBtn">⚡ Scanner</button>
+      <button id="keyBtn" title="Precios reales de acciones (token gratis de Finnhub)">🔑 Stocks</button>
       <button id="exportBtn">↧ Export</button>
     </div>
   </div>
@@ -1274,65 +1275,83 @@ function injectCryptoFallback(){
 }
 
 const STOCK_SYMS=["AAPL","MSFT","NVDA","AMD","GOOGL","META","AMZN","TSLA","AVGO","TSM","ASML","PLTR","SNOW","CRM","ADBE","ORCL","JPM","GS","MS","BAC","V","MA","PYPL","UNH","LLY","JNJ","PFE","MRNA","VRTX","REGN","GILD","XOM","CVX","COP","SLB","CAT","BA","GE","HON","NEE","DUK","LIN","FCX","PLD","AMT","NFLX","DIS"];
-const CORS=[
+// Las cripto usan CoinGecko (CORS nativo). Las acciones gratis (Stooq/Yahoo) NO permiten
+// CORS, así que dependen de proxies públicos (poco fiables). La vía garantizada es Finnhub
+// (CORS nativo, token gratis) — botón 🔑 Stocks. Los proxies se prueban EN PARALELO.
+const STOCK_PROXIES=[
   u=>"https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u),
   u=>"https://corsproxy.io/?url="+encodeURIComponent(u),
-  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)
+  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
+  u=>"https://thingproxy.freeboard.io/fetch/"+u
 ];
-// Fuente A — Stooq: precios reales de bolsa en lote (1 sola llamada), sin API key ni crumb.
-async function stocksStooq(syms){
-  const stooq="https://stooq.com/q/l/?s="+syms.map(s=>s.toLowerCase()+".us").join(",")+"&f=sd2t2ohlcv&h&e=csv";
-  for(const mk of CORS){
-    try{
-      const r=await fetch(mk(stooq),{signal:AbortSignal.timeout(13000)});
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      const txt=await r.text();
-      if(!txt||txt.length<20)throw new Error("vacío");
-      const lines=txt.trim().split(/\r?\n/);
-      const hdr=lines[0].toLowerCase().split(",");
-      const si=hdr.indexOf("symbol"),ci=hdr.indexOf("close");
-      if(si<0||ci<0)throw new Error("CSV inválido");
-      let n=0;
-      for(let i=1;i<lines.length;i++){
-        const c=lines[i].split(",");
-        const sym=(c[si]||"").toUpperCase().replace(".US","");
-        const px=parseFloat(c[ci]);
-        if(sym&&isFinite(px)&&px>0&&rescaleToReal(sym,px,null)){LIVE.source[sym]="Stooq";n++;}
-      }
-      if(n)return n;
-    }catch(e){/* siguiente proxy */}
-  }
-  return 0;
+function getStockKey(){try{return(localStorage.getItem("atlasFinnhub")||"").trim();}catch(e){return"";}}
+// Devuelve el cuerpo (texto) usando el PRIMER proxy que responda (en paralelo).
+function viaProxies(url){
+  return Promise.any(STOCK_PROXIES.map(async mk=>{
+    const r=await fetch(mk(url),{signal:AbortSignal.timeout(14000)});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const t=await r.text();
+    if(!t||t.length<15)throw new Error("vacío");
+    return t;
+  }));
 }
-// Fuente B — Yahoo v8 chart (real-time, NO requiere crumb), por símbolo, en paralelo.
+// Fuente 0 — Finnhub (CORS nativo, requiere token gratuito): la más fiable.
+async function stocksFinnhub(syms){
+  const key=getStockKey(); if(!key)return 0;
+  let n=0;
+  for(let i=0;i<syms.length;i+=20){
+    const res=await Promise.allSettled(syms.slice(i,i+20).map(async s=>{
+      const r=await fetch("https://finnhub.io/api/v1/quote?symbol="+s+"&token="+key,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw 0; const j=await r.json(); if(j&&j.c>0)return[s,j.c]; throw 0;
+    }));
+    res.forEach(R=>{if(R.status==="fulfilled"&&R.value&&rescaleToReal(R.value[0],R.value[1],null)){LIVE.source[R.value[0]]="Finnhub";n++;}});
+    if(i+20<syms.length)await new Promise(r=>setTimeout(r,1100));
+  }
+  return n;
+}
+// Fuente A — Stooq batch (CSV) vía proxies en paralelo.
+async function stocksStooq(syms){
+  const url="https://stooq.com/q/l/?s="+syms.map(s=>s.toLowerCase()+".us").join(",")+"&f=sd2t2ohlcv&h&e=csv";
+  let txt; try{txt=await viaProxies(url);}catch(e){return 0;}
+  const lines=txt.trim().split(/\r?\n/);const hdr=lines[0].toLowerCase().split(",");
+  const si=hdr.indexOf("symbol"),ci=hdr.indexOf("close"); if(si<0||ci<0)return 0;
+  let n=0;
+  for(let i=1;i<lines.length;i++){const c=lines[i].split(",");const sym=(c[si]||"").toUpperCase().replace(".US","");const px=parseFloat(c[ci]);
+    if(sym&&isFinite(px)&&px>0&&rescaleToReal(sym,px,null)){LIVE.source[sym]="Stooq";n++;}}
+  return n;
+}
+// Fuente B — Yahoo v8 chart (real-time, sin crumb) por símbolo, vía proxies en paralelo.
 async function stocksYahooChart(syms){
   const got=await Promise.allSettled(syms.map(async s=>{
-    for(const mk of CORS){
-      try{
-        const r=await fetch(mk("https://query1.finance.yahoo.com/v8/finance/chart/"+s+"?range=1d&interval=1d"),{signal:AbortSignal.timeout(12000)});
-        if(!r.ok)continue;
-        const j=await r.json();
-        const m=j&&j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
-        const px=m&&m.regularMarketPrice;
-        if(px>0)return[s,px];
-      }catch(e){}
-    }
-    throw 0;
+    const t=await viaProxies("https://query1.finance.yahoo.com/v8/finance/chart/"+s+"?range=1d&interval=1d");
+    const j=JSON.parse(t);const m=j&&j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
+    if(m&&m.regularMarketPrice>0)return[s,m.regularMarketPrice]; throw 0;
   }));
-  let n=0;
-  got.forEach(R=>{if(R.status==="fulfilled"&&R.value){const[s,px]=R.value;if(rescaleToReal(s,px,null)){LIVE.source[s]="Yahoo";n++;}}});
+  let n=0;got.forEach(R=>{if(R.status==="fulfilled"&&R.value&&rescaleToReal(R.value[0],R.value[1],null)){LIVE.source[R.value[0]]="Yahoo";n++;}});
   return n;
 }
 async function liveYahoo(){
   const syms=STOCK_SYMS.filter(s=>UNIVERSE.find(a=>a.ticker===s));
   if(!syms.length)return 0;
-  log("LIVE","Cargando acciones reales (Stooq / Yahoo)…","var(--warn)");
-  let n=await stocksStooq(syms);
+  log("LIVE","Cargando acciones reales…","var(--warn)");
+  let n=await stocksFinnhub(syms);
+  if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Finnhub)","var(--up)");return n;}
+  n=await stocksStooq(syms);
   if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Stooq)","var(--up)");return n;}
   n=await stocksYahooChart(syms.slice(0,30));
-  if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Yahoo Finance)","var(--up)");return n;}
-  log("LIVE","Acciones: ninguna fuente disponible — modo sintético","var(--warn)");
+  if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Yahoo)","var(--up)");return n;}
+  log("LIVE","Acciones: proxies bloqueados → pulsa 🔑 Stocks y pega un token GRATIS de Finnhub","var(--down)");
   return 0;
+}
+function setupStockKeyButton(){
+  const kb=document.getElementById("keyBtn"); if(!kb)return;
+  kb.onclick=()=>{
+    const v=prompt("PRECIOS REALES DE ACCIONES\n\nPega tu API key GRATIS de Finnhub (regístrate en finnhub.io/register, 30s).\nLas cripto ya van en tiempo real por CoinGecko; las acciones gratuitas no permiten\nCORS desde el navegador, por eso hace falta este token (CORS nativo, sin proxies).",getStockKey());
+    if(v==null)return;
+    try{localStorage.setItem("atlasFinnhub",v.trim());}catch(e){}
+    toast(v.trim()?"Token guardado — cargando acciones reales…":"Token borrado");
+    liveYahoo().then(()=>{clearIndexCache();renderAssetList();renderTape();renderTop();renderCenter();renderRight();});
+  };
 }
 
 
@@ -1350,6 +1369,7 @@ async function refreshLive(){
   clearIndexCache();
   try{renderAssetList();renderTape();renderTop();renderCenter();renderRight();}catch(e){}
 }
+setupStockKeyButton();
 liveStart();
 </script>
 </body>
