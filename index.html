@@ -1273,22 +1273,68 @@ function injectCryptoFallback(){
   GROUPS.CRIPTO=x=>x.type==="crypto";LIVE.nCrypto=C.length;
 }
 
-async function liveYahoo(){
-  const syms=["AAPL","MSFT","NVDA","AMD","GOOGL","META","AMZN","TSLA","AVGO","TSM","ASML","PLTR","SNOW","CRM","ADBE","ORCL","JPM","GS","MS","BAC","V","MA","PYPL","UNH","LLY","JNJ","PFE","MRNA","VRTX","REGN","GILD","XOM","CVX","COP","SLB","CAT","BA","GE","HON","NEE","DUK","LIN","FCX","PLD","AMT","NFLX","DIS"].filter(s=>UNIVERSE.find(a=>a.ticker===s));
-  try{
-    log("LIVE","Cargando acciones reales (Yahoo Finance)…","var(--warn)");
-    const url="https://query1.finance.yahoo.com/v7/finance/quote?symbols="+encodeURIComponent(syms.join(","))+"&fields=regularMarketPrice,regularMarketChangePercent";
-    const r=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(15000)});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const js=await r.json();
-    const q=(js&&js.quoteResponse&&js.quoteResponse.result)||[];
-    let n=0;
-    q.forEach(x=>{if(x.regularMarketPrice&&rescaleToReal(x.symbol,x.regularMarketPrice,x.regularMarketChangePercent)){LIVE.source[x.symbol]="Yahoo";n++;}});
-    if(!n)throw new Error("respuesta vacía");
-    LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Yahoo Finance)","var(--up)");
-    return n;
-  }catch(e){log("LIVE","Yahoo no disponible ("+e.message+") — acciones en modo sintético","var(--warn)");return 0;}
+const STOCK_SYMS=["AAPL","MSFT","NVDA","AMD","GOOGL","META","AMZN","TSLA","AVGO","TSM","ASML","PLTR","SNOW","CRM","ADBE","ORCL","JPM","GS","MS","BAC","V","MA","PYPL","UNH","LLY","JNJ","PFE","MRNA","VRTX","REGN","GILD","XOM","CVX","COP","SLB","CAT","BA","GE","HON","NEE","DUK","LIN","FCX","PLD","AMT","NFLX","DIS"];
+const CORS=[
+  u=>"https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(u),
+  u=>"https://corsproxy.io/?url="+encodeURIComponent(u),
+  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)
+];
+// Fuente A — Stooq: precios reales de bolsa en lote (1 sola llamada), sin API key ni crumb.
+async function stocksStooq(syms){
+  const stooq="https://stooq.com/q/l/?s="+syms.map(s=>s.toLowerCase()+".us").join(",")+"&f=sd2t2ohlcv&h&e=csv";
+  for(const mk of CORS){
+    try{
+      const r=await fetch(mk(stooq),{signal:AbortSignal.timeout(13000)});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const txt=await r.text();
+      if(!txt||txt.length<20)throw new Error("vacío");
+      const lines=txt.trim().split(/\r?\n/);
+      const hdr=lines[0].toLowerCase().split(",");
+      const si=hdr.indexOf("symbol"),ci=hdr.indexOf("close");
+      if(si<0||ci<0)throw new Error("CSV inválido");
+      let n=0;
+      for(let i=1;i<lines.length;i++){
+        const c=lines[i].split(",");
+        const sym=(c[si]||"").toUpperCase().replace(".US","");
+        const px=parseFloat(c[ci]);
+        if(sym&&isFinite(px)&&px>0&&rescaleToReal(sym,px,null)){LIVE.source[sym]="Stooq";n++;}
+      }
+      if(n)return n;
+    }catch(e){/* siguiente proxy */}
+  }
+  return 0;
 }
+// Fuente B — Yahoo v8 chart (real-time, NO requiere crumb), por símbolo, en paralelo.
+async function stocksYahooChart(syms){
+  const got=await Promise.allSettled(syms.map(async s=>{
+    for(const mk of CORS){
+      try{
+        const r=await fetch(mk("https://query1.finance.yahoo.com/v8/finance/chart/"+s+"?range=1d&interval=1d"),{signal:AbortSignal.timeout(12000)});
+        if(!r.ok)continue;
+        const j=await r.json();
+        const m=j&&j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
+        const px=m&&m.regularMarketPrice;
+        if(px>0)return[s,px];
+      }catch(e){}
+    }
+    throw 0;
+  }));
+  let n=0;
+  got.forEach(R=>{if(R.status==="fulfilled"&&R.value){const[s,px]=R.value;if(rescaleToReal(s,px,null)){LIVE.source[s]="Yahoo";n++;}}});
+  return n;
+}
+async function liveYahoo(){
+  const syms=STOCK_SYMS.filter(s=>UNIVERSE.find(a=>a.ticker===s));
+  if(!syms.length)return 0;
+  log("LIVE","Cargando acciones reales (Stooq / Yahoo)…","var(--warn)");
+  let n=await stocksStooq(syms);
+  if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Stooq)","var(--up)");return n;}
+  n=await stocksYahooChart(syms.slice(0,30));
+  if(n){LIVE.nStock=n;log("LIVE",n+" acciones con precio real (Yahoo Finance)","var(--up)");return n;}
+  log("LIVE","Acciones: ninguna fuente disponible — modo sintético","var(--warn)");
+  return 0;
+}
+
 
 async function liveStart(){
   try{await Promise.all([liveCoinGecko(),liveYahoo()]);}catch(e){}
