@@ -1284,7 +1284,12 @@ const STOCK_PROXIES=[
   u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
   u=>"https://thingproxy.freeboard.io/fetch/"+u
 ];
-function getStockKey(){try{return(localStorage.getItem("atlasFinnhub")||"").trim();}catch(e){return"";}}
+// Token(s) de Finnhub cableados por defecto (a petición del usuario). Se prueban varios
+// candidatos por si el pegado juntó API key + secret. Se puede sobreescribir con 🔑 Stocks.
+const DEFAULT_FINNHUB=["d8j7qrpr01qgth6j0r2g","d8j7qrpr01qgth6j0r30","d8j7qrpr01qgth6j0r2gd8j7qrpr01qgth6j0r30"];
+function getStockKey(){try{const k=(localStorage.getItem("atlasFinnhub")||"").trim();if(k)return k;}catch(e){}return DEFAULT_FINNHUB[0];}
+function finnhubCandidates(){try{const k=(localStorage.getItem("atlasFinnhub")||"").trim();if(k)return[k];}catch(e){}return DEFAULT_FINNHUB.slice();}
+async function finnhubValid(key){try{const r=await fetch("https://finnhub.io/api/v1/quote?symbol=AAPL&token="+key,{signal:AbortSignal.timeout(10000)});if(!r.ok)return false;const j=await r.json();return!!(j&&j.c>0);}catch(e){return false;}}
 // Devuelve el cuerpo (texto) usando el PRIMER proxy que responda (en paralelo).
 function viaProxies(url){
   return Promise.any(STOCK_PROXIES.map(async mk=>{
@@ -1295,9 +1300,11 @@ function viaProxies(url){
     return t;
   }));
 }
-// Fuente 0 — Finnhub (CORS nativo, requiere token gratuito): la más fiable.
+// Fuente 0 — Finnhub (CORS nativo, token cableado): la más fiable. Valida el token y carga.
 async function stocksFinnhub(syms){
-  const key=getStockKey(); if(!key)return 0;
+  let key=null;
+  for(const c of finnhubCandidates()){if(await finnhubValid(c)){key=c;break;}}
+  if(!key)return 0;
   let n=0;
   for(let i=0;i<syms.length;i+=20){
     const res=await Promise.allSettled(syms.slice(i,i+20).map(async s=>{
